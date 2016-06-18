@@ -12,6 +12,7 @@ import Network.HTTP.Simple
 import Data.ByteString ()
 import Data.Text (Text ())
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy.Char8 as B
 
 -- | User credentials
@@ -27,7 +28,27 @@ data Config = Config
   , configManager :: !Manager
   }
 
+newtype RetentionPolicy = RetentionPolicy { unRetentionPolicy :: Text }
+
+data EpochPrecision = Hours
+                    | Minutes
+                    | Seconds
+                    | Milliseconds
+                    | Microseconds
+                    | Nanoseconds 
+                    deriving Eq
+
+data OptionalParams = OptionalParams
+  { chunkSize       :: Maybe Int
+  , epoch           :: Maybe EpochPrecision
+  , pretty          :: Maybe Bool
+  , retentionPolicy :: Maybe RetentionPolicy
+  }
+
 newtype InfluxVersion = InfluxVersion { unInfluxVersion :: Text }
+  deriving Show
+
+newtype Query = Query { unQuery :: Text }
   deriving Show
 
 urlAppend :: String -> String -> String
@@ -43,6 +64,4 @@ ping config = do
   let version = getResponseHeader "X-Influxdb-Version" response
   return $ if (not . null) version || getResponseStatus response == 204 
     then Nothing
-    else Just (head version)
-
-
+    else Just . InfluxVersion . T.decodeUtf8 $ head version
