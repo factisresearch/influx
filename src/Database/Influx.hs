@@ -1,21 +1,24 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Database.Influx
-    ( ping
-    , Credentials(..)
+    ( Credentials(..)
     , Config(..)
     , EpochPrecision(..)
     , RetentionPolicy
     , DatabaseName
     , OptionalParams(..)
     , InfluxVersion(..)
+    , ping
+    , getQueryRaw
     ) where
 
 import Control.Arrow (second)
-import Network.HTTP.Client.Conduit
-import Network.HTTP.Simple
+import Data.String (IsString)
 import Data.Maybe (catMaybes)
 import Data.Text (Text ())
+import Network.HTTP.Client.Conduit
+import Network.HTTP.Simple
 import qualified Data.Aeson as A
 import qualified Data.ByteString as B
 import qualified Data.Text as T
@@ -99,7 +102,7 @@ newtype InfluxVersion
 newtype Query
     = Query
     { unQuery :: Text
-    } deriving Show
+    } deriving (Show, IsString)
 
 urlAppend :: String -> String -> String
 urlAppend base path = base' ++ "/" ++ path'
@@ -131,7 +134,7 @@ getQueryRaw config opts query =
        res <- httpJSONEither req
        case getResponseBody res of
          Left err -> fail $ "JSON decoding failed: " ++ show err
-         Right val -> pure val 
+         Right val -> pure val
 
 -- getQuery :: Config -> Maybe Database -> Query -> IO ???
 -- postQueryRaw :: 
