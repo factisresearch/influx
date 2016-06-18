@@ -1,15 +1,13 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Database.Influx.Tests
+module Database.Influx.API.Tests
    ( htf_thisModulesTests
    ) where
 
 import Database.Influx
 
 import Test.Framework
-import Data.Maybe (fromJust)
 import qualified Data.Text as T
 
 testConfig :: Config
@@ -43,7 +41,9 @@ test_createDropDB =
        dbs <- showDBs
        postQuery testConfig Nothing "DROP DATABASE integration_test"
        dbsAfter <- showDBs
-       assertBool $ "integration_test" `elem` dbs && "integration_test" `notElem` dbsAfter
+       assertBool $
+           "integration_test" `elem` dbs &&
+           "integration_test" `notElem` dbsAfter
 
 test_properLineProtocol :: IO ()
 test_properLineProtocol =

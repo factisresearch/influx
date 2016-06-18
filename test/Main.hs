@@ -4,7 +4,7 @@
 module Main where
 
 import Test.Framework
-import {-@ HTF_TESTS @-} Database.Influx.Tests
+import {-@ HTF_TESTS @-} Database.Influx.API.Tests
 
 main :: IO ()
 main = htfMain htf_importedTests
