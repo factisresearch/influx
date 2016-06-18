@@ -13,7 +13,7 @@ module Database.Influx
     , RetentionPolicy
     , DatabaseName
     , QueryParams(..)
-    , defaultOptParams
+    , defaultQueryParams
     , InfluxVersion(..)
     , ping
     , Query(..)
@@ -101,8 +101,8 @@ data QueryParams
     , qp_database :: !(Maybe DatabaseName)
     } deriving (Show)
 
-defaultOptParams :: QueryParams
-defaultOptParams =
+defaultQueryParams :: QueryParams
+defaultQueryParams =
     QueryParams
     { qp_chunkSize = Nothing
     , qp_epoch = Nothing
@@ -110,8 +110,8 @@ defaultOptParams =
     , qp_database = Nothing
     }
 
-optParamsToQueryString :: QueryParams -> [(B.ByteString, Maybe B.ByteString)]
-optParamsToQueryString opts =
+queryParamsToQueryString :: QueryParams -> [(B.ByteString, Maybe B.ByteString)]
+queryParamsToQueryString opts =
     fmap (second Just) $
     catMaybes
     [ (,) "chunk_size" . T.encodeUtf8 . T.pack . show <$> qp_chunkSize opts
@@ -215,7 +215,7 @@ queryRaw method config opts query =
     do let url = configServer config `urlAppend` "/query"
            queryString =
              maybe [] credsToQueryString (configCreds config) ++
-             optParamsToQueryString opts ++
+             queryParamsToQueryString opts ++
              [ ("q", Just (T.encodeUtf8 (unQuery query))) ]
        baseReq <- parseUrl url
        let req =
@@ -352,7 +352,7 @@ getQuery ::
     -> Query
     -> IO (ParsedTable t)
 getQuery config mDatabase query =
-    do let opts = defaultOptParams { qp_database = mDatabase }
+    do let opts = defaultQueryParams { qp_database = mDatabase }
        results <- getQueryRaw config opts query
        case results of
          [] -> fail "no result"
@@ -408,12 +408,34 @@ serializeInfluxData d =
       serializeTimeStamp t = T.pack $ show $ unTimestamp t
       escape = T.replace "," "\\," . T.replace " " "\\ "
 
-write :: Config -> QueryParams -> [InfluxData] -> IO ()
-write config opts ds =
+data WriteParams
+    = WriteParams
+    { wp_precision :: !(Maybe EpochPrecision)
+    , wp_retentionPolicy :: !(Maybe RetentionPolicy)
+    }
+
+defaultWriteParams :: WriteParams
+defaultWriteParams =
+    WriteParams
+    { wp_precision = Nothing
+    , wp_retentionPolicy = Nothing
+    }
+  
+writeParamsToQueryString :: WriteParams -> [(B.ByteString, Maybe B.ByteString)]
+writeParamsToQueryString opts =
+    fmap (second Just) $
+    catMaybes
+    [ (,) "precision" . epochToBytestring <$> wp_precision opts
+    , (,) "rp" . T.encodeUtf8 <$> wp_retentionPolicy opts
+    ]
+
+write :: Config -> DatabaseName -> WriteParams -> [InfluxData] -> IO ()
+write config database opts ds =
     do let url = configServer config `urlAppend` "/write"
            queryString =
+             [ ("db", Just (T.encodeUtf8 database)) ] ++
              maybe [] credsToQueryString (configCreds config) ++
-             optParamsToQueryString opts
+             writeParamsToQueryString opts
            reqBody =
              RequestBodyBS $ T.encodeUtf8 $ T.unlines $
              map serializeInfluxData ds
