@@ -68,6 +68,6 @@ ping config =
        response <- httpLBS request
        let version = getResponseHeader "X-Influxdb-Version" response
        return $
-           if (not . null) version || getResponseStatusCode response == 204
+           if null version || getResponseStatusCode response /= 204
              then Nothing
              else Just . InfluxVersion . T.decodeUtf8 $ head version
