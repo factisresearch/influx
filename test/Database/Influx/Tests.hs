@@ -39,20 +39,20 @@ test_getQueryRaw :: IO ()
 test_getQueryRaw =
     do config <- testConfig
        let pointCount = length . tableValues . head . fromJust . resultTables . head
-       res <- pointCount <$> getQueryRaw config (defaultOptParams { optDatabase = Just "_internal" }) (Query "select * from \"httpd\"")
+       res <- pointCount <$> getQueryRaw config (defaultQueryParams { qp_database = Just "_internal" }) (Query "select * from \"httpd\"")
        assertBool $ res >= 1
 
 showDBs :: IO [T.Text]
 showDBs =
     do config <- testConfig
-       map ((\(String t) -> t) . V.head . influxPointValues) . tableValues . head . fromJust . resultTables . head <$> queryRaw "POST" config defaultOptParams "SHOW DATABASES"
+       map ((\(String t) -> t) . V.head . influxPointValues) . tableValues . head . fromJust . resultTables . head <$> queryRaw "POST" config defaultQueryParams "SHOW DATABASES"
 
 test_createDropDB :: IO ()
 test_createDropDB =
     do config <- testConfig
-       _ <- postQueryRaw config defaultOptParams "CREATE DATABASE integration_test"
+       _ <- postQueryRaw config defaultQueryParams "CREATE DATABASE integration_test"
        dbs <- showDBs
-       _ <- postQueryRaw config defaultOptParams "DROP DATABASE integration_test"
+       _ <- postQueryRaw config defaultQueryParams "DROP DATABASE integration_test"
        dbsAfter <- showDBs
        assertBool $ "integration_test" `elem` dbs && "integration_test" `notElem` dbsAfter
 
