@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Database.Influx
-  ( ping
-  , Credentials(..)
-  , Config(..)
-  , InfluxVersion ()
-  ) where
+    ( ping
+    , Credentials(..)
+    , Config(..)
+    , InfluxVersion(..)
+    ) where
 
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
@@ -23,33 +23,38 @@ data Credentials
     } deriving (Show)
 
 data Config = Config
-  { configCreds  :: !(Maybe Credentials)
-  , configServer :: !String
-  , configManager :: !Manager
-  }
+    { configCreds  :: !(Maybe Credentials)
+    , configServer :: !String
+    , configManager :: !Manager
+    }
 
 newtype RetentionPolicy = RetentionPolicy { unRetentionPolicy :: Text }
 
-data EpochPrecision = Hours
-                    | Minutes
-                    | Seconds
-                    | Milliseconds
-                    | Microseconds
-                    | Nanoseconds
-                    deriving Eq
+data EpochPrecision
+    = Hours
+    | Minutes
+    | Seconds
+    | Milliseconds
+    | Microseconds
+    | Nanoseconds
+    deriving Eq
 
 data OptionalParams = OptionalParams
-  { chunkSize       :: Maybe Int
-  , epoch           :: Maybe EpochPrecision
-  , pretty          :: Maybe Bool
-  , retentionPolicy :: Maybe RetentionPolicy
-  }
+    { chunkSize       :: !(Maybe Int)
+    , epoch           :: !(Maybe EpochPrecision)
+    , pretty          :: !(Maybe Bool)
+    , retentionPolicy :: !(Maybe RetentionPolicy)
+    }
 
-newtype InfluxVersion = InfluxVersion { unInfluxVersion :: Text }
-  deriving Show
+newtype InfluxVersion
+    = InfluxVersion
+    { unInfluxVersion :: Text
+    } deriving Show
 
-newtype Query = Query { unQuery :: Text }
-  deriving Show
+newtype Query
+    = Query
+    { unQuery :: Text
+    } deriving Show
 
 urlAppend :: String -> String -> String
 urlAppend base path = base' ++ "/" ++ path'
@@ -58,10 +63,11 @@ urlAppend base path = base' ++ "/" ++ path'
 
 ping :: Config
      -> IO (Maybe InfluxVersion)
-ping config = do
-  request <- setRequestMethod "HEAD" <$> parseUrl (urlAppend (configServer config) "/ping")
-  response <- httpLBS request
-  let version = getResponseHeader "X-Influxdb-Version" response
-  return $ if (not . null) version || getResponseStatusCode response == 204
-    then Nothing
-    else Just . InfluxVersion . T.decodeUtf8 $ head version
+ping config =
+    do request <- setRequestMethod "HEAD" <$> parseUrl (urlAppend (configServer config) "/ping")
+       response <- httpLBS request
+       let version = getResponseHeader "X-Influxdb-Version" response
+       return $
+           if (not . null) version || getResponseStatusCode response == 204
+             then Nothing
+             else Just . InfluxVersion . T.decodeUtf8 $ head version
