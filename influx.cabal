@@ -16,7 +16,10 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Database.Influx
+  exposed-modules:
+    Database.Influx
+    Database.Influx.API
+    Database.Influx.Types
   -- other-modules:
   -- other-extensions:
   build-depends:       base
