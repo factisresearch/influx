@@ -8,13 +8,9 @@ module Database.Influx.Tests
 
 import Database.Influx
 
-import Test.Framework
 import Data.Maybe (fromJust)
-import Network.HTTP.Client.Conduit
 import Test.Framework
-import qualified Data.HVect as HV
 import qualified Data.Text as T
-import qualified Data.Vector as V
 
 testConfig :: Config
 testConfig =
@@ -56,6 +52,13 @@ test_createDropDB =
        assertBool $ "integration_test" `elem` dbs && "integration_test" `notElem` dbsAfter
 
 test_properLineProtocol :: IO ()
-test_properLineProtocol = let line = "cpu,host=server\\ 01,region=uswest value=1i,msg=\"all systems nominal\""
-                              repr = InfluxData "cpu" [("host", "server 01"), ("region", "uswest")] [("value", Number 1), ("msg", String "all systems nominal")] Nothing
-                              in assertEqual line (serializeInfluxData repr)
+test_properLineProtocol =
+    let line = "cpu,host=server\\ 01,region=uswest value=1i,msg=\"all systems nominal\""
+        repr =
+            InfluxData
+            { dataMeasurement = "cpu"
+            , dataTags = [("host", "server 01"), ("region", "uswest")]
+            , dataFields = [("value", Integer 1), ("msg", String "all systems nominal")]
+            , dataTimestamp = Nothing
+            }
+    in assertEqual line (serializeInfluxData repr)
