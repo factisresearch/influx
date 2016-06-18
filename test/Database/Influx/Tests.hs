@@ -8,8 +8,8 @@ module Database.Influx.Tests
 
 import Database.Influx
 
-import Data.Maybe (fromJust)
 import Test.Framework
+import Data.Maybe (fromJust)
 import qualified Data.Text as T
 
 testConfig :: Config
