@@ -1,7 +1,10 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Database.Influx
     ( Credentials(..)
@@ -22,6 +25,7 @@ module Database.Influx
     , getQueryRaw
     , postQueryRaw
     , FromInfluxValue(..)
+    , FromInfluxPoint(..)
     ) where
 
 import Control.Arrow (second)
@@ -228,6 +232,9 @@ type Parser = A.Parser
 class FromInfluxValue a where
     parseInfluxValue :: Value -> Parser a
 
+instance FromInfluxValue Value where
+    parseInfluxValue = pure
+
 instance FromInfluxValue Bool where
     parseInfluxValue val =
         case val of
@@ -270,6 +277,47 @@ instance FromInfluxValue a => FromInfluxValue (Maybe a) where
           Null -> pure Nothing
           _ -> Just <$> parseInfluxValue val
 
+{-
+instance FromInfluxValue Time.UTCTime where
+    parseInfluxValue val =
+        case val of
+          String s ->
+              case Time.parseTimeM True Time.defaultTimeLocale timestampFormat (T.unpack s) of
+                Nothing -> fail "could not parse string as timestamp"
+                Just time -> pure time
+          _ -> fail "expected a time stamp"
+        where
+          timestampFormat = "%Y-%m-%dT%H:%M:%SZ"
+-}
+
+class FromInfluxPoint a where
+    parseInfluxPoint :: InfluxPoint -> Parser a
+
+instance FromInfluxPoint InfluxPoint where
+    parseInfluxPoint = pure
+
+tupleParser ::
+    (FromInfluxValue x, FromInfluxPoint t)
+    => InfluxPoint
+    -> Parser (x, t)
+tupleParser p =
+    let v = influxPointValues p
+    in if V.length v >= 1
+         then
+             (,)
+                 <$> parseInfluxValue (V.head v)
+                 <*> parseInfluxPoint (InfluxPoint (V.tail v))
+         else fail "expected a non-empty vector"
+
+instance (FromInfluxValue x, FromInfluxPoint t) => FromInfluxPoint (x, t) where
+    parseInfluxPoint = tupleParser
+
+instance FromInfluxPoint (HV.HVect '[]) where
+    parseInfluxPoint _ = pure HV.HNil
+
+instance (FromInfluxValue t, FromInfluxPoint (HV.HVect ts)) =>
+    FromInfluxPoint (HV.HVect (t ': ts)) where
+    parseInfluxPoint p = uncurry (HV.:&:) <$> tupleParser p
+
 -- getQuery :: Config -> Maybe Database -> Query -> IO ???
--- postQueryRaw ::
 -- postQuery :: ???
