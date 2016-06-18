@@ -24,6 +24,7 @@ module Database.Influx
     , queryRaw
     , getQueryRaw
     , postQueryRaw
+    , postQuery
     , FromInfluxValue(..)
     , FromInfluxPoint(..)
     , getQuery
@@ -233,6 +234,11 @@ getQueryRaw = queryRaw "GET"
 
 postQueryRaw :: Config -> QueryParams -> Query -> IO [InfluxResult]
 postQueryRaw = queryRaw "POST"
+
+postQuery :: Config -> Maybe DatabaseName -> Query -> IO ()
+postQuery config mDatabase query =
+    let params = defaultQueryParams { qp_database = mDatabase }
+    in void (postQueryRaw config params query)
 
 type Parser = A.Parser
 

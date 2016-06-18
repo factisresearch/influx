@@ -50,9 +50,9 @@ showDBs =
 test_createDropDB :: IO ()
 test_createDropDB =
     do config <- testConfig
-       _ <- postQueryRaw config defaultQueryParams "CREATE DATABASE integration_test"
+       postQuery config Nothing "CREATE DATABASE integration_test"
        dbs <- showDBs
-       _ <- postQueryRaw config defaultQueryParams "DROP DATABASE integration_test"
+       postQuery config Nothing "DROP DATABASE integration_test"
        dbsAfter <- showDBs
        assertBool $ "integration_test" `elem` dbs && "integration_test" `notElem` dbsAfter
 
