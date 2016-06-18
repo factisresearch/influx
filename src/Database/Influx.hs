@@ -57,11 +57,11 @@ urlAppend base path = base' ++ "/" ++ path'
         path' = if head path == '/' then tail path else path
 
 ping :: Config
-     -> IO InfluxVersion
+     -> IO (Maybe InfluxVersion)
 ping config = do
   request <- setRequestMethod "HEAD" <$> parseUrl (urlAppend (configServer config) "/ping")
   response <- httpLBS request
   let version = getResponseHeader "X-Influxdb-Version" response
-  return $ if (not . null) version || getResponseStatus response == 204
+  return $ if (not . null) version || getResponseStatusCode response == 204
     then Nothing
     else Just . InfluxVersion . T.decodeUtf8 $ head version
