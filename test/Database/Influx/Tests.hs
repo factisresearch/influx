@@ -15,12 +15,11 @@ import qualified Data.Vector as V
 
 testConfig :: IO Config
 testConfig =
-    do manager <- newManager
-       pure
+    do pure
            Config
            { configCreds = Just creds
            , configServer = "http://localhost:8086"
-           , configManager = manager
+           , configManager = Nothing
            }
   where
     creds =
@@ -56,3 +55,8 @@ test_createDropDB =
        _ <- postQueryRaw config defaultOptParams "DROP DATABASE integration_test"
        dbsAfter <- showDBs
        assertBool $ "integration_test" `elem` dbs && "integration_test" `notElem` dbsAfter
+
+test_properLineProtocol :: IO ()
+test_properLineProtocol = let line = "cpu,host=server\\ 01,region=uswest value=1i,msg=\"all systems nominal\""
+                              repr = InfluxData "cpu" [("host", "server 01"), ("region", "uswest")] [("value", Number 1), ("msg", String "all systems nominal")] Nothing
+                              in assertEqual line (serializeInfluxData repr)
