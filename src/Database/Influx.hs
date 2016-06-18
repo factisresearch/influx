@@ -21,15 +21,16 @@ module Database.Influx
     , InfluxPoint
     , InfluxTable
     , InfluxResult
-    , InfluxResults
     , getQueryRaw
     , postQueryRaw
     , FromInfluxValue(..)
     , FromInfluxPoint(..)
+    , getQuery
     ) where
 
 import Control.Arrow (second)
 import Data.Aeson ((.:), (.:?))
+import Data.Either (lefts, rights)
 import Data.String (IsString)
 import Data.Maybe (catMaybes)
 import Data.Text (Text ())
@@ -204,7 +205,7 @@ queryRaw ::
     -> Config
     -> OptionalParams
     -> Query
-    -> IO InfluxResults
+    -> IO [InfluxResult]
 queryRaw method config opts query =
     do let url = configServer config `urlAppend` "/query"
            queryString =
@@ -218,12 +219,12 @@ queryRaw method config opts query =
        res <- httpJSONEither req
        case getResponseBody res of
          Left err -> fail $ "JSON decoding failed: " ++ show err
-         Right val -> pure val
+         Right val -> pure (unInfluxResults val)
 
-getQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
+getQueryRaw :: Config -> OptionalParams -> Query -> IO [InfluxResult]
 getQueryRaw = queryRaw "GET"
 
-postQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
+postQueryRaw :: Config -> OptionalParams -> Query -> IO [InfluxResult]
 postQueryRaw = queryRaw "POST"
 
 type Parser = A.Parser
@@ -318,5 +319,45 @@ instance (FromInfluxValue t, FromInfluxPoint (HV.HVect ts)) =>
     FromInfluxPoint (HV.HVect (t ': ts)) where
     parseInfluxPoint p = uncurry (HV.:&:) <$> tupleParser p
 
--- getQuery :: Config -> Maybe Database -> Query -> IO ???
+data ParsedTable t
+    = ParsedTable
+    { parsedRows :: [t]
+    , pointsThatCouldNotBeParsed :: [InfluxPoint]
+    } deriving (Show)
+
+parseInfluxTable ::
+  FromInfluxPoint t
+  => InfluxTable
+  -> ParsedTable t
+parseInfluxTable table =
+    let parseIfPossible row =
+            case A.parseEither parseInfluxPoint row of
+              Left _err -> Left row
+              Right parsed -> Right parsed
+        xs = map parseIfPossible (tableValues table)
+        parsedRows = rights xs
+        pointsThatCouldNotBeParsed = lefts xs
+    in ParsedTable {..}
+
+getQuery ::
+    FromInfluxPoint t
+    => Config
+    -> Maybe DatabaseName
+    -> Query
+    -> IO (ParsedTable t)
+getQuery config mDatabase query =
+    do let opts = defaultOptParams { optDatabase = mDatabase }
+       results <- getQueryRaw config opts query
+       case results of
+         [] -> fail "no result"
+         _:_:_ -> fail "multiple results"
+         [result] ->
+             case resultTables result of
+               Nothing -> fail "result has no points!"
+               Just tables ->
+                   case tables of
+                     [] -> fail "no tables"
+                     _:_:_ -> fail "multiple tables"
+                     [table] -> pure (parseInfluxTable table)
+
 -- postQuery :: ???
