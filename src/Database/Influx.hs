@@ -154,6 +154,7 @@ ping config =
 data Value
     = String !Text
     | Number !S.Scientific
+    | Integer !Integer -- ^ only used for serialization
     | Bool !Bool
     | Null
     deriving (Show)
@@ -277,6 +278,7 @@ instance FromInfluxValue Integer where
               case S.floatingOrInteger s :: Either Double Integer of
                 Left _ -> fail "expected an integer, but got a double"
                 Right i -> pure i
+          Integer i -> pure i
           _ -> fail "expected an integer"
 
 instance FromInfluxValue Int where
@@ -286,6 +288,12 @@ instance FromInfluxValue Int where
               case S.toBoundedInteger s of
                 Nothing -> fail "expected an int, but got a double or an out-of-range integer"
                 Just i -> pure i
+          Integer i ->
+              let intMinBound = toInteger (minBound :: Int)
+                  intMaxBound = toInteger (maxBound :: Int)
+              in if intMinBound <= i && i <= intMaxBound
+                   then pure (fromInteger i)
+                   else fail "expected an int, but got an out-of-range integer"
           _ -> fail "expected an integer"
 
 instance FromInfluxValue a => FromInfluxValue (Maybe a) where
@@ -433,6 +441,7 @@ serializeValue :: Value -> Maybe Text
 serializeValue v =
     case v of
       Number n -> Just $ T.pack $ show n
+      Integer i -> Just $ T.pack (show i) <> "i"
       String s -> Just $ T.pack $ show s
       Bool b ->
         Just $ if b then "true" else "false"
