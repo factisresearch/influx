@@ -17,7 +17,7 @@ testConfig =
        pure
            Config
            { configCreds = Just creds
-           , configServer = "http://localhost:8080"
+           , configServer = "http://localhost:8086"
            , configManager = manager
            }
   where
