@@ -30,6 +30,8 @@ module Database.Influx
     , getQuery
     , InfluxData(..)
     , serializeInfluxData
+    , WriteParams(..)
+    , defaultWriteParams
     , write
     ) where
 
