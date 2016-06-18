@@ -12,7 +12,7 @@ module Database.Influx
     , EpochPrecision(..)
     , RetentionPolicy
     , DatabaseName
-    , OptionalParams(..)
+    , QueryParams(..)
     , defaultOptParams
     , InfluxVersion(..)
     , ping
@@ -93,31 +93,31 @@ epochToBytestring epoch =
 
 type DatabaseName = Text
 
-data OptionalParams
-    = OptionalParams
-    { optChunkSize :: !(Maybe Int)
-    , optEpoch :: !(Maybe EpochPrecision)
-    , optRetentionPolicy :: !(Maybe RetentionPolicy)
-    , optDatabase :: !(Maybe DatabaseName)
+data QueryParams
+    = QueryParams
+    { qp_chunkSize :: !(Maybe Int)
+    , qp_epoch :: !(Maybe EpochPrecision)
+    , qp_retentionPolicy :: !(Maybe RetentionPolicy)
+    , qp_database :: !(Maybe DatabaseName)
     } deriving (Show)
 
-defaultOptParams :: OptionalParams
+defaultOptParams :: QueryParams
 defaultOptParams =
-    OptionalParams
-    { optChunkSize = Nothing
-    , optEpoch = Nothing
-    , optRetentionPolicy = Nothing
-    , optDatabase = Nothing
+    QueryParams
+    { qp_chunkSize = Nothing
+    , qp_epoch = Nothing
+    , qp_retentionPolicy = Nothing
+    , qp_database = Nothing
     }
 
-optParamsToQueryString :: OptionalParams -> [(B.ByteString, Maybe B.ByteString)]
+optParamsToQueryString :: QueryParams -> [(B.ByteString, Maybe B.ByteString)]
 optParamsToQueryString opts =
     fmap (second Just) $
     catMaybes
-    [ (,) "chunk_size" . T.encodeUtf8 . T.pack . show <$> optChunkSize opts
-    , (,) "epoch" . epochToBytestring <$> optEpoch opts
-    , (,) "rp" . T.encodeUtf8 <$> optRetentionPolicy opts
-    , (,) "db" . T.encodeUtf8 <$> optDatabase opts
+    [ (,) "chunk_size" . T.encodeUtf8 . T.pack . show <$> qp_chunkSize opts
+    , (,) "epoch" . epochToBytestring <$> qp_epoch opts
+    , (,) "rp" . T.encodeUtf8 <$> qp_retentionPolicy opts
+    , (,) "db" . T.encodeUtf8 <$> qp_database opts
     ]
 
 newtype InfluxVersion
@@ -208,7 +208,7 @@ instance A.FromJSON InfluxResults where
 queryRaw ::
        String -- ^ HTTP method
     -> Config
-    -> OptionalParams
+    -> QueryParams
     -> Query
     -> IO [InfluxResult]
 queryRaw method config opts query =
@@ -227,10 +227,10 @@ queryRaw method config opts query =
          Left err -> fail $ "JSON decoding failed: " ++ show err
          Right val -> pure (unInfluxResults val)
 
-getQueryRaw :: Config -> OptionalParams -> Query -> IO [InfluxResult]
+getQueryRaw :: Config -> QueryParams -> Query -> IO [InfluxResult]
 getQueryRaw = queryRaw "GET"
 
-postQueryRaw :: Config -> OptionalParams -> Query -> IO [InfluxResult]
+postQueryRaw :: Config -> QueryParams -> Query -> IO [InfluxResult]
 postQueryRaw = queryRaw "POST"
 
 type Parser = A.Parser
@@ -352,7 +352,7 @@ getQuery ::
     -> Query
     -> IO (ParsedTable t)
 getQuery config mDatabase query =
-    do let opts = defaultOptParams { optDatabase = mDatabase }
+    do let opts = defaultOptParams { qp_database = mDatabase }
        results <- getQueryRaw config opts query
        case results of
          [] -> fail "no result"
@@ -409,7 +409,7 @@ serializeInfluxData d =
       serializeTimeStamp t = T.pack $ show $ unTimestamp t
       escape = T.replace "," "\\," . T.replace " " "\\ "
 
-write :: Config -> OptionalParams -> [InfluxData] -> IO ()
+write :: Config -> QueryParams -> [InfluxData] -> IO ()
 write config opts ds =
     do let url = configServer config `urlAppend` "/write"
            queryString =
