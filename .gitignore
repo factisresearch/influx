@@ -1,0 +1,11 @@
+# Haskell
+.stack-work
+.cabal-sandbox
+dist
+cabal.sandbox.config
+
+# Nix
+shell.nix
+
+# macOS
+.DS_Store
