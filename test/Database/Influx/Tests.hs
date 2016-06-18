@@ -33,3 +33,9 @@ test_ping =
        res <- ping config
        assertBool $
            maybe False ((>= 1) . T.length . unInfluxVersion) res
+
+test_getQuery :: IO ()
+test_getQuery =
+    do config <- testConfig
+       res <- getQueryRaw config defaultOptParams (Query "SHOW TAG KEYS FROM \"database\"")
+       return ()
