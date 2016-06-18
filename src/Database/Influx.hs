@@ -432,12 +432,7 @@ data InfluxData
 serializeValue :: Value -> Maybe Text
 serializeValue v =
     case v of
-      Number s ->
-        case S.floatingOrInteger s :: Either Double Integer of
-          Left f ->
-            Just $ T.pack $ show f
-          Right i ->
-            Just $ T.pack (show i) <> "i"
+      Number n -> Just $ T.pack $ show n
       String s -> Just $ T.pack $ show s
       Bool b ->
         Just $ if b then "true" else "false"
@@ -468,7 +463,7 @@ defaultWriteParams =
     { wp_precision = Nothing
     , wp_retentionPolicy = Nothing
     }
-  
+
 writeParamsToQueryString :: WriteParams -> [(B.ByteString, Maybe B.ByteString)]
 writeParamsToQueryString opts =
     fmap (second Just) $
