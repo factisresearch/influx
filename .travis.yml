@@ -6,6 +6,7 @@ addons:
   apt:
     packages:
     - libgmp-dev
+    - wget
 
 before_install:
 - wget https://dl.influxdata.com/influxdb/releases/influxdb_0.13.0_amd64.deb
