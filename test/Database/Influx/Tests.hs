@@ -8,7 +8,6 @@ module Database.Influx.Tests
 import Database.Influx
 
 import Test.Framework
-import Network.HTTP.Client.Conduit
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import qualified Data.Vector as V
