@@ -1,25 +1,10 @@
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
-import Database.Influx
-import Network.HTTP.Client.Conduit
-
-testConfig :: IO Config
-testConfig =
-    do manager <- newManager defaultManagerSettings
-       pure
-          Config
-          { configCreds = creds
-          , configServer = "localhost:8080"
-          , configManager = manager
-          }
-  where
-    creds =
-        Credentials
-        { credsUser = "root"
-        , credsPassword = "root"
-        }
+import Test.Framework
+import {-@ HTF_TESTS @-} Database.Influx.Tests
 
 main :: IO ()
-main = return ()
+main = htfMain htf_importedTests
