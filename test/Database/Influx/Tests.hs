@@ -7,8 +7,8 @@ module Database.Influx.Tests
 
 import Database.Influx
 
-import Network.HTTP.Client.Conduit
 import Test.Framework
+import Network.HTTP.Client.Conduit
 import qualified Data.Text as T
 
 testConfig :: IO Config
@@ -38,4 +38,11 @@ test_getQuery :: IO ()
 test_getQuery =
     do config <- testConfig
        res <- getQueryRaw config (defaultOptParams { optDatabase = Just "_internal" }) (Query "SHOW TAG KEYS FROM \"database\"")
+       return ()
+
+test_createDropDB :: IO ()
+test_createDropDB =
+    do config <- testConfig
+       _ <- postQueryRaw config defaultOptParams "CREATE DATABASE integration_test"
+       _ <- postQueryRaw config defaultOptParams "DROP DATABASE integration_test"
        return ()

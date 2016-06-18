@@ -15,7 +15,9 @@ module Database.Influx
     , Query(..)
     , InfluxTable
     , InfluxResult
+    , InfluxResults
     , getQueryRaw
+    , postQueryRaw
     ) where
 
 import Control.Arrow (second)
