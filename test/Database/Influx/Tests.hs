@@ -37,5 +37,5 @@ test_ping =
 test_getQuery :: IO ()
 test_getQuery =
     do config <- testConfig
-       res <- getQueryRaw config defaultOptParams (Query "SHOW TAG KEYS FROM \"database\"")
+       res <- getQueryRaw config (defaultOptParams { optDatabase = Just "_internal" }) (Query "SHOW TAG KEYS FROM \"database\"")
        return ()
