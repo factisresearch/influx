@@ -20,8 +20,8 @@ install:
     - stack build --only-snapshot --no-terminal
 
 script:
-    - sudo influxd &
-    - sleep 10
+    - sudo influxd 2>&1 > influx.log &
+    - sleep 20
     - stack --no-terminal --install-ghc test --haddock --pedantic
 
 # Caching so the next build will be fast too.
