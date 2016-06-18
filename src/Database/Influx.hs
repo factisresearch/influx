@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Database.Influx
     ( Credentials(..)
@@ -12,10 +13,13 @@ module Database.Influx
     , InfluxVersion(..)
     , ping
     , Query(..)
+    , InfluxTable
+    , InfluxResult
     , getQueryRaw
     ) where
 
 import Control.Arrow (second)
+import Data.Aeson ((.:), (.:?))
 import Data.String (IsString)
 import Data.Maybe (catMaybes)
 import Data.Text (Text ())
@@ -25,6 +29,7 @@ import qualified Data.Aeson as A
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Vector as V
 
 -- | User credentials
 data Credentials
@@ -121,8 +126,45 @@ ping config =
              then Nothing
              else Just . InfluxVersion . T.decodeUtf8 $ head version
 
+data InfluxTable
+    = InfluxTable
+    { tableName :: Text
+    , tableColumns :: V.Vector Text
+    , tableValues :: [V.Vector A.Value]
+    } deriving (Show)
 
-getQueryRaw :: Config -> OptionalParams -> Query -> IO A.Value
+instance A.FromJSON InfluxTable where
+    parseJSON =
+        A.withObject "InfluxTable" $ \o ->
+            do tableName <- o .: "name"
+               tableColumns <- o .: "columns"
+               tableValues <- o .: "values"
+               pure InfluxTable {..}
+
+data InfluxResult
+    = InfluxResult
+    { resultError :: Maybe String
+    , resultTables :: Maybe [InfluxTable]
+    } deriving (Show)
+
+instance A.FromJSON InfluxResult where
+    parseJSON =
+        A.withObject "InfluxResult" $ \o ->
+            do resultError <- o .:? "error"
+               resultTables <- o .:? "series"
+               pure InfluxResult {..}
+
+newtype InfluxResults
+    = InfluxResults
+    { unInfluxResults :: [InfluxResult]
+    } deriving (Show)
+
+instance A.FromJSON InfluxResults where
+    parseJSON =
+        A.withObject "InfluxResults" $ \o ->
+            InfluxResults <$> o .: "results"
+
+getQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
 getQueryRaw config opts query =
     do let url = configServer config `urlAppend` "/query"
            queryString =
