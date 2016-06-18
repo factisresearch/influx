@@ -29,6 +29,7 @@ import qualified Data.Aeson as A
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Scientific as S
 import qualified Data.Vector as V
 
 -- | User credentials
@@ -126,11 +127,33 @@ ping config =
              then Nothing
              else Just . InfluxVersion . T.decodeUtf8 $ head version
 
+data Value
+    = String !Text
+    | Number !S.Scientific
+    | Bool !Bool
+    | Null
+    deriving (Show)
+
+instance A.FromJSON Value where
+    parseJSON val =
+        case val of
+          A.String s -> pure (String s)
+          A.Number n -> pure (Number n)
+          A.Bool b -> pure (Bool b)
+          A.Null -> pure Null
+          A.Object _ -> fail "didn't expect an object as an influx value"
+          A.Array _ -> fail "didn't expect an array as an influx value"
+
+newtype InfluxPoint
+    = InfluxPoint
+    { influxPointValues :: V.Vector Value
+    } deriving (Show, A.FromJSON)
+
 data InfluxTable
     = InfluxTable
     { tableName :: Text
     , tableColumns :: V.Vector Text
-    , tableValues :: [V.Vector A.Value]
+    , tableValues :: [InfluxPoint]
     } deriving (Show)
 
 instance A.FromJSON InfluxTable where
