@@ -31,6 +31,7 @@ module Database.Influx
     ) where
 
 import Control.Arrow (second)
+import Control.Monad (void)
 import Data.Aeson ((.:), (.:?))
 import Data.Either (lefts, rights)
 import Data.String (IsString)
@@ -65,7 +66,7 @@ credsToQueryString creds =
 data Config = Config
     { configCreds  :: !(Maybe Credentials)
     , configServer :: !String
-    , configManager :: !Manager
+    , configManager :: !(Maybe Manager)
     }
 
 type RetentionPolicy = Text
@@ -218,6 +219,7 @@ queryRaw method config opts query =
        baseReq <- parseUrl url
        let req =
              setRequestMethod "GET" $
+             maybe id setRequestManager (configManager config) $
              setRequestQueryString queryString baseReq
        res <- httpJSONEither req
        case getResponseBody res of
@@ -405,3 +407,19 @@ serializeInfluxData d =
           ((escape k <> "=") <>) <$> serializeValue v
       serializeTimeStamp t = T.pack $ show $ unTimestamp t
       escape = T.replace "," "\\," . T.replace " " "\\ "
+
+write :: Config -> OptionalParams -> [InfluxData] -> IO ()
+write config opts ds =
+    do let url = configServer config `urlAppend` "/write"
+           queryString =
+             maybe [] credsToQueryString (configCreds config) ++
+             optParamsToQueryString opts
+           reqBody =
+             RequestBodyBS $ T.encodeUtf8 $ T.unlines $
+             map serializeInfluxData ds
+       baseReq <- parseUrl url
+       let req =
+             setRequestMethod "POST" $
+             maybe id setRequestManager (configManager config) $
+             setRequestBody reqBody baseReq
+       void $ httpLBS req 
