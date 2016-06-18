@@ -32,12 +32,6 @@ test_ping =
        assertBool $
            maybe False ((>= 1) . T.length . unInfluxVersion) res
 
-test_getQueryRaw :: IO ()
-test_getQueryRaw =
-    do let pointCount = length . tableValues . head . fromJust . resultTables . head
-       res <- pointCount <$> getQueryRaw testConfig (defaultQueryParams { qp_database = Just "_internal" }) (Query "select * from \"httpd\"")
-       assertBool $ res >= 1
-
 showDBs :: IO [T.Text]
 showDBs =
     do queryRes <- getQuery testConfig Nothing "SHOW DATABASES"
