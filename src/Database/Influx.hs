@@ -43,7 +43,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
-import qualified Data.Time as Time
 
 -- | User credentials
 data Credentials
@@ -240,19 +239,19 @@ instance FromInfluxValue Bool where
         case val of
           Bool b -> pure b
           _ -> fail "expected a bool"
-          
+
 instance FromInfluxValue Text where
     parseInfluxValue val =
         case val of
           String s -> pure s
           _ -> fail "expected a string"
-          
+
 instance FromInfluxValue String where
     parseInfluxValue val =
         case val of
           String s -> pure (T.unpack s)
           _ -> fail "expected a string"
-          
+
 instance FromInfluxValue Integer where
     parseInfluxValue val =
         case val of
