@@ -397,8 +397,7 @@ serializeValue v =
 
 serializeInfluxData :: InfluxData -> Text
 serializeInfluxData d =
-    escape (dataMeasurement d) <> " " <>
-    T.intercalate "," (map serializeTag (dataTags d)) <> " " <>
+    T.intercalate "," (escape (dataMeasurement d) : map serializeTag (dataTags d)) <> " " <>
     T.intercalate "," (mapMaybe serializeField (dataFields d)) <>
     maybe "" (\t -> " " <> serializeTimeStamp t) (dataTimestamp d)
     where
