@@ -21,6 +21,7 @@ install:
 
 script:
     - influxd &
+    - sleep 30
     - stack --no-terminal --install-ghc test --haddock --pedantic
 
 # Caching so the next build will be fast too.
