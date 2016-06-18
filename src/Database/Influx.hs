@@ -29,6 +29,7 @@ module Database.Influx
     , getQuery
     , InfluxData(..)
     , serializeInfluxData
+    , write
     ) where
 
 import Control.Arrow (second)
@@ -206,7 +207,7 @@ instance A.FromJSON InfluxResults where
             InfluxResults <$> o .: "results"
 
 queryRaw ::
-       String -- ^ HTTP method
+       B.ByteString -- ^ HTTP method
     -> Config
     -> QueryParams
     -> Query
@@ -219,7 +220,7 @@ queryRaw method config opts query =
              [ ("q", Just (T.encodeUtf8 (unQuery query))) ]
        baseReq <- parseUrl url
        let req =
-             setRequestMethod "GET" $
+             setRequestMethod method $
              maybe id setRequestManager (configManager config) $
              setRequestQueryString queryString baseReq
        res <- httpJSONEither req
@@ -263,7 +264,7 @@ instance FromInfluxValue Integer where
     parseInfluxValue val =
         case val of
           Number s ->
-              case S.floatingOrInteger s of
+              case S.floatingOrInteger s :: Either Double Integer of
                 Left _ -> fail "expected an integer, but got a double"
                 Right i -> pure i
           _ -> fail "expected an integer"
@@ -442,6 +443,7 @@ write config database opts ds =
        baseReq <- parseUrl url
        let req =
              setRequestMethod "POST" $
+             setQueryString queryString $
              maybe id setRequestManager (configManager config) $
              setRequestBody reqBody baseReq
        void $ httpLBS req
