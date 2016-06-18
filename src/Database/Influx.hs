@@ -27,6 +27,8 @@ module Database.Influx
     , postQuery
     , FromInfluxValue(..)
     , FromInfluxPoint(..)
+    , Cons(..)
+    , ParsedTable(..)
     , getQuery
     , InfluxData(..)
     , serializeInfluxData
@@ -311,28 +313,65 @@ class FromInfluxPoint a where
 instance FromInfluxPoint InfluxPoint where
     parseInfluxPoint = pure
 
-tupleParser ::
-    (FromInfluxValue x, FromInfluxPoint t)
-    => InfluxPoint
-    -> Parser (x, t)
-tupleParser p =
-    let v = influxPointValues p
-    in if V.length v >= 1
-         then
-             (,)
-                 <$> parseInfluxValue (V.head v)
-                 <*> parseInfluxPoint (InfluxPoint (V.tail v))
-         else fail "expected a non-empty vector"
+data Cons a b = Cons { car :: a, cdr :: b }
 
-instance (FromInfluxValue x, FromInfluxPoint t) => FromInfluxPoint (x, t) where
-    parseInfluxPoint = tupleParser
+instance (FromInfluxValue a, FromInfluxPoint b) =>
+    FromInfluxPoint (Cons a b) where
+    parseInfluxPoint p =
+        let v = influxPointValues p
+        in if V.length v >= 1
+             then
+                 Cons
+                     <$> parseInfluxValue (V.head v)
+                     <*> parseInfluxPoint (InfluxPoint (V.tail v))
+             else fail "expected a non-empty vector"
+
+instance FromInfluxPoint () where
+    parseInfluxPoint _p = pure ()
+
+instance (FromInfluxValue a, FromInfluxValue b) => FromInfluxPoint (a, b) where
+    parseInfluxPoint p =
+        do Cons a (Cons b ()) <- parseInfluxPoint p
+           pure (a, b)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c) => FromInfluxPoint (a, b, c) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c ())) <- parseInfluxPoint p
+           pure (a, b, c)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c, FromInfluxValue d) => FromInfluxPoint (a, b, c, d) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c (Cons d ()))) <- parseInfluxPoint p
+           pure (a, b, c, d)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c, FromInfluxValue d, FromInfluxValue e) => FromInfluxPoint (a, b, c, d, e) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c (Cons d (Cons e ())))) <- parseInfluxPoint p
+           pure (a, b, c, d, e)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c, FromInfluxValue d, FromInfluxValue e, FromInfluxValue f) => FromInfluxPoint (a, b, c, d, e, f) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c (Cons d (Cons e (Cons f ()))))) <- parseInfluxPoint p
+           pure (a, b, c, d, e, f)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c, FromInfluxValue d, FromInfluxValue e, FromInfluxValue f, FromInfluxValue g) => FromInfluxPoint (a, b, c, d, e, f, g) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c (Cons d (Cons e (Cons f (Cons g ())))))) <- parseInfluxPoint p
+           pure (a, b, c, d, e, f, g)
+
+instance (FromInfluxValue a, FromInfluxValue b, FromInfluxValue c, FromInfluxValue d, FromInfluxValue e, FromInfluxValue f, FromInfluxValue g, FromInfluxValue h) => FromInfluxPoint (a, b, c, d, e, f, g, h) where
+    parseInfluxPoint p =
+        do Cons a (Cons b (Cons c (Cons d (Cons e (Cons f (Cons g (Cons h ()))))))) <- parseInfluxPoint p
+           pure (a, b, c, d, e, f, g, h)
 
 instance FromInfluxPoint (HV.HVect '[]) where
     parseInfluxPoint _ = pure HV.HNil
 
 instance (FromInfluxValue t, FromInfluxPoint (HV.HVect ts)) =>
     FromInfluxPoint (HV.HVect (t ': ts)) where
-    parseInfluxPoint p = uncurry (HV.:&:) <$> tupleParser p
+    parseInfluxPoint p =
+        do Cons x xs <- parseInfluxPoint p
+           pure $ x HV.:&: xs
 
 data ParsedTable t
     = ParsedTable
