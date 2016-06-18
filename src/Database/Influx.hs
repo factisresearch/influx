@@ -164,8 +164,13 @@ instance A.FromJSON InfluxResults where
         A.withObject "InfluxResults" $ \o ->
             InfluxResults <$> o .: "results"
 
-getQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
-getQueryRaw config opts query =
+queryRaw ::
+       String -- ^ HTTP method
+    -> Config
+    -> OptionalParams
+    -> Query
+    -> IO InfluxResults
+queryRaw method config opts query =
     do let url = configServer config `urlAppend` "/query"
            queryString =
              maybe [] credsToQueryString (configCreds config) ++
@@ -179,6 +184,12 @@ getQueryRaw config opts query =
        case getResponseBody res of
          Left err -> fail $ "JSON decoding failed: " ++ show err
          Right val -> pure val
+
+getQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
+getQueryRaw = queryRaw "GET"
+
+postQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
+postQueryRaw = queryRaw "POST"
 
 -- getQuery :: Config -> Maybe Database -> Query -> IO ???
 -- postQueryRaw ::
