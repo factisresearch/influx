@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -13,11 +14,14 @@ module Database.Influx
     , InfluxVersion(..)
     , ping
     , Query(..)
+    , Value
+    , InfluxPoint
     , InfluxTable
     , InfluxResult
     , InfluxResults
     , getQueryRaw
     , postQueryRaw
+    , FromInfluxValue(..)
     ) where
 
 import Control.Arrow (second)
@@ -28,11 +32,14 @@ import Data.Text (Text ())
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as A
 import qualified Data.ByteString as B
+import qualified Data.HVect as HV
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
+import qualified Data.Time as Time
 
 -- | User credentials
 data Credentials
@@ -215,6 +222,53 @@ getQueryRaw = queryRaw "GET"
 
 postQueryRaw :: Config -> OptionalParams -> Query -> IO InfluxResults
 postQueryRaw = queryRaw "POST"
+
+type Parser = A.Parser
+
+class FromInfluxValue a where
+    parseInfluxValue :: Value -> Parser a
+
+instance FromInfluxValue Bool where
+    parseInfluxValue val =
+        case val of
+          Bool b -> pure b
+          _ -> fail "expected a bool"
+          
+instance FromInfluxValue Text where
+    parseInfluxValue val =
+        case val of
+          String s -> pure s
+          _ -> fail "expected a string"
+          
+instance FromInfluxValue String where
+    parseInfluxValue val =
+        case val of
+          String s -> pure (T.unpack s)
+          _ -> fail "expected a string"
+          
+instance FromInfluxValue Integer where
+    parseInfluxValue val =
+        case val of
+          Number s ->
+              case S.floatingOrInteger s of
+                Left _ -> fail "expected an integer, but got a double"
+                Right i -> pure i
+          _ -> fail "expected an integer"
+
+instance FromInfluxValue Int where
+    parseInfluxValue val =
+        case val of
+          Number s ->
+              case S.toBoundedInteger s of
+                Nothing -> fail "expected an int, but got a double or an out-of-range integer"
+                Just i -> pure i
+          _ -> fail "expected an integer"
+
+instance FromInfluxValue a => FromInfluxValue (Maybe a) where
+    parseInfluxValue val =
+        case val of
+          Null -> pure Nothing
+          _ -> Just <$> parseInfluxValue val
 
 -- getQuery :: Config -> Maybe Database -> Query -> IO ???
 -- postQueryRaw ::
