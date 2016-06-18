@@ -35,7 +35,7 @@ data EpochPrecision = Hours
                     | Seconds
                     | Milliseconds
                     | Microseconds
-                    | Nanoseconds 
+                    | Nanoseconds
                     deriving Eq
 
 data OptionalParams = OptionalParams
@@ -62,6 +62,6 @@ ping config = do
   request <- setRequestMethod "HEAD" <$> parseUrl (urlAppend (configServer config) "/ping")
   response <- httpLBS request
   let version = getResponseHeader "X-Influxdb-Version" response
-  return $ if (not . null) version || getResponseStatus response == 204 
+  return $ if (not . null) version || getResponseStatus response == 204
     then Nothing
     else Just . InfluxVersion . T.decodeUtf8 $ head version
