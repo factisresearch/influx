@@ -8,8 +8,10 @@ module Database.Influx
     , RetentionPolicy
     , DatabaseName
     , OptionalParams(..)
+    , defaultOptParams
     , InfluxVersion(..)
     , ping
+    , Query(..)
     , getQueryRaw
     ) where
 
@@ -137,5 +139,5 @@ getQueryRaw config opts query =
          Right val -> pure val
 
 -- getQuery :: Config -> Maybe Database -> Query -> IO ???
--- postQueryRaw :: 
+-- postQueryRaw ::
 -- postQuery :: ???
