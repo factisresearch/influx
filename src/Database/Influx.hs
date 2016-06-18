@@ -17,10 +17,11 @@ module Database.Influx
     , InfluxVersion(..)
     , ping
     , Query(..)
-    , Value
-    , InfluxPoint
-    , InfluxTable
-    , InfluxResult
+    , Value(..)
+    , InfluxPoint(..)
+    , InfluxTable(..)
+    , InfluxResult(..)
+    , queryRaw
     , getQueryRaw
     , postQueryRaw
     , FromInfluxValue(..)
@@ -422,4 +423,4 @@ write config opts ds =
              setRequestMethod "POST" $
              maybe id setRequestManager (configManager config) $
              setRequestBody reqBody baseReq
-       void $ httpLBS req 
+       void $ httpLBS req

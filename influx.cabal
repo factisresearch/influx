@@ -39,6 +39,7 @@ test-suite influx-integration
     influx,
     http-conduit,
     HTF,
-    text
+    text,
+    vector
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
