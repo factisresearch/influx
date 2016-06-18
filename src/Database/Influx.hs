@@ -26,13 +26,16 @@ module Database.Influx
     , FromInfluxValue(..)
     , FromInfluxPoint(..)
     , getQuery
+    , InfluxData(..)
+    , serializeInfluxData
     ) where
 
 import Control.Arrow (second)
 import Data.Aeson ((.:), (.:?))
 import Data.Either (lefts, rights)
 import Data.String (IsString)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
+import Data.Monoid ((<>))
 import Data.Text (Text ())
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
@@ -361,3 +364,44 @@ getQuery config mDatabase query =
                      [table] -> pure (parseInfluxTable table)
 
 -- postQuery :: ???
+
+newtype Timestamp
+    = Timestamp
+    { unTimestamp :: Integer
+    } deriving (Show)
+
+data InfluxData
+    = InfluxData
+    { dataMeasurement :: Text
+    , dataTags :: [(Text, Text)]
+    , dataFields :: [(Text, Value)]
+    , dataTimestamp :: Maybe Timestamp
+    }
+
+serializeValue :: Value -> Maybe Text
+serializeValue v =
+    case v of
+      Number s ->
+        case S.floatingOrInteger s :: Either Double Integer of
+          Left f ->
+            Just $ T.pack $ show f
+          Right i ->
+            Just $ T.pack (show i) <> "i"
+      String s -> Just $ T.pack $ show s
+      Bool b ->
+        Just $ if b then "true" else "false"
+      Null -> Nothing
+
+serializeInfluxData :: InfluxData -> Text
+serializeInfluxData d =
+    escape (dataMeasurement d) <> " " <>
+    T.intercalate "," (map serializeTag (dataTags d)) <> " " <>
+    T.intercalate "," (mapMaybe serializeField (dataFields d)) <>
+    maybe "" (\t -> " " <> serializeTimeStamp t) (dataTimestamp d)
+    where
+      serializeTag (k, v) =
+          escape k <> "=" <> escape v
+      serializeField (k, v) =
+          ((escape k <> "=") <>) <$> serializeValue v
+      serializeTimeStamp t = T.pack $ show $ unTimestamp t
+      escape = T.replace "," "\\," . T.replace " " "\\ "
