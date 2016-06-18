@@ -1,17 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Database.Influx
   ( ping
-  , Config (..)
+  , Credentials(..)
+  , Config(..)
   , InfluxVersion ()
   ) where
 
+import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
+import Data.ByteString ()
 import Data.Text (Text ())
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy.Char8 as B
 
+-- | User credentials
+data Credentials
+    = Credentials
+    { credsUser :: !Text
+    , credsPassword :: !Text
+    } deriving (Show)
+
 data Config = Config
-  { configCreds  :: !Credentials
+  { configCreds  :: !(Maybe Credentials)
   , configServer :: !String
   , configManager :: !Manager
   }
