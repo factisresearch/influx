@@ -19,9 +19,9 @@ library
   exposed-modules:
     Database.Influx
     Database.Influx.API
+    Database.Influx.Internal.Helpers
     Database.Influx.Types
   other-modules:
-    Database.Influx.Internal.Helpers
     Database.Influx.Types.Core
     Database.Influx.Types.FromInfluxPoint
   -- other-extensions:
@@ -42,6 +42,9 @@ test-suite influx-integration
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Main.hs
+  other-modules:
+    Database.Influx.API.Tests
+    Database.Influx.Internal.Helpers.Tests
   build-depends:
     base,
     influx,

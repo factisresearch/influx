@@ -3,64 +3,28 @@
 
 module Database.Influx.API
     ( ping
-    , queryRaw
     , getQueryRaw
+    , getQuery
     , postQueryRaw
     , postQuery
-    , FromInfluxValue(..)
-    , FromInfluxPoint(..)
-    , Cons(..)
-    , getQuery
-    , serializeInfluxData
     , write
     ) where
 
 import Database.Influx.Types
 import Database.Influx.Internal.Helpers
       
-import Control.Arrow (second)
 import Control.Monad (void)
 import Data.Either (lefts, rights)
-import Data.Maybe (catMaybes, mapMaybe)
-import Data.Monoid ((<>))
-import Data.Text (Text)
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-    
-credsToQueryString :: Credentials -> [(B.ByteString, Maybe B.ByteString)]
-credsToQueryString creds =
-    fmap (second Just) $
-    [ ("u", T.encodeUtf8 (credsUser creds))
-    , ("p", T.encodeUtf8 (credsPassword creds))
-    ]
-
-epochToBytestring :: EpochPrecision -> B.ByteString
-epochToBytestring epoch =
-    case epoch of
-      Hours -> "h"
-      Minutes -> "m"
-      Seconds -> "s"
-      Milliseconds -> "ms"
-      Microseconds -> "us"
-      Nanoseconds -> "ns"
-
-queryParamsToQueryString :: QueryParams -> [(B.ByteString, Maybe B.ByteString)]
-queryParamsToQueryString opts =
-    fmap (second Just) $
-    catMaybes
-    [ (,) "chunk_size" . T.encodeUtf8 . T.pack . show <$> qp_chunkSize opts
-    , (,) "epoch" . epochToBytestring <$> qp_epoch opts
-    , (,) "rp" . T.encodeUtf8 <$> qp_retentionPolicy opts
-    , (,) "db" . T.encodeUtf8 <$> qp_database opts
-    ]
-
 
 ping :: Config -> IO (Maybe InfluxVersion)
 ping config =
-    do request <- setRequestMethod "HEAD" <$> parseUrl (urlAppend (configServer config) "/ping")
+    do let url = configServer config `urlAppend` "/ping"
+       request <- setRequestMethod "HEAD" <$> parseUrl url
        response <- httpLBS request
        let version = getResponseHeader "X-Influxdb-Version" response
        return $
@@ -135,37 +99,6 @@ getQuery config mDatabase query =
                      [] -> fail "no tables"
                      _:_:_ -> fail "multiple tables"
                      [table] -> pure (parseInfluxTable table)
-
-serializeValue :: Value -> Maybe Text
-serializeValue v =
-    case v of
-      Number n -> Just $ T.pack $ show n
-      Integer i -> Just $ T.pack (show i) <> "i"
-      String s -> Just $ T.pack $ show s
-      Bool b ->
-        Just $ if b then "true" else "false"
-      Null -> Nothing
-
-serializeInfluxData :: InfluxData -> Text
-serializeInfluxData d =
-    T.intercalate "," (escape (dataMeasurement d) : map serializeTag (dataTags d)) <> " " <>
-    T.intercalate "," (mapMaybe serializeField (dataFields d)) <>
-    maybe "" (\t -> " " <> serializeTimeStamp t) (dataTimestamp d)
-    where
-      serializeTag (k, v) =
-          escape k <> "=" <> escape v
-      serializeField (k, v) =
-          ((escape k <> "=") <>) <$> serializeValue v
-      serializeTimeStamp t = T.pack $ show $ unTimeStamp t
-      escape = T.replace "," "\\," . T.replace " " "\\ "
-
-writeParamsToQueryString :: WriteParams -> [(B.ByteString, Maybe B.ByteString)]
-writeParamsToQueryString opts =
-    fmap (second Just) $
-    catMaybes
-    [ (,) "precision" . epochToBytestring <$> wp_precision opts
-    , (,) "rp" . T.encodeUtf8 <$> wp_retentionPolicy opts
-    ]
 
 write :: Config -> DatabaseName -> WriteParams -> [InfluxData] -> IO ()
 write config database opts ds =

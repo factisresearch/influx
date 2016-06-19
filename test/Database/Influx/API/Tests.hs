@@ -44,15 +44,3 @@ test_createDropDB =
        assertBool $
            "integration_test" `elem` dbs &&
            "integration_test" `notElem` dbsAfter
-
-test_properLineProtocol :: IO ()
-test_properLineProtocol =
-    let line = "cpu,host=server\\ 01,region=uswest value=1i,msg=\"all systems nominal\""
-        repr =
-            InfluxData
-            { dataMeasurement = "cpu"
-            , dataTags = [("host", "server 01"), ("region", "uswest")]
-            , dataFields = [("value", Integer 1), ("msg", String "all systems nominal")]
-            , dataTimestamp = Nothing
-            }
-    in assertEqual line (serializeInfluxData repr)
