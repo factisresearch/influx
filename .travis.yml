@@ -21,7 +21,7 @@ before_install:
 env:
 - TRAVIS_STACK_ARGS=""
 - TRAVIS_STACK_ARGS="--resolver lts"
-- TRAVIS_STACK_ARGS="--resolver ghc-8.0.1"
+- TRAVIS_STACK_ARGS="--resolver lts-2"
 - TRAVIS_STACK_ARGS="--resolver nightly"
  
 install:
