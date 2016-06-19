@@ -20,7 +20,10 @@ library
     Database.Influx
     Database.Influx.API
     Database.Influx.Types
-  -- other-modules:
+  other-modules:
+    Database.Influx.Internal.Helpers
+    Database.Influx.Types.Core
+    Database.Influx.Types.FromInfluxPoint
   -- other-extensions:
   build-depends:       base
                      , http-conduit
