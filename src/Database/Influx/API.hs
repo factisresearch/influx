@@ -32,6 +32,39 @@ ping config =
              then Nothing
              else Just . InfluxVersion . T.decodeUtf8 $ head version
 
+{-
+queryRequestMethod :: Query -> Maybe B.ByteString
+queryRequestMethod q =
+    case (queryStatementType q) of
+      "select" ->
+           if containsIntoClause q
+             then Just "POST"
+             else Just "GET"
+      "show" -> Just "GET"
+      "alter" -> Just "POST"
+      "create" -> Just "POST"
+      "delete" -> Just "POST"
+      "drop" -> Just "POST"
+      "kill" -> Just "POST"
+      "grant" -> Just "POST"
+       _ -> Nothing
+    where
+      queryStatementType =
+          T.toLower . T.takeWhile (/= ' ') . T.strip . unQuery
+
+containsIntoClause :: Query -> Bool
+containsIntoClause query =
+    if T.isInfixOf "into" q && T.isInfixOf "from" q
+      then let tokens = T.words q
+               intoIndex = "into" `elemIndex` tokens
+               fromIndex = "from" `elemIndex` tokens
+               selectIndex = "select" `elemIndex` tokens
+          in selectIndex < intoIndex && intoIndex < fromIndex
+      else False -- can't contain an INTO-clause
+    where q = T.toLower . T.strip $ unQuery query
+
+-}
+
 queryRaw ::
        B.ByteString -- ^ HTTP method
     -> Config
