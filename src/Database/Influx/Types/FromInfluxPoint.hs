@@ -41,6 +41,7 @@ instance Monad Result where
     return = Success
     Error err >>= _f = Error err
     Success x >>= f = f x
+    fail = Error
 
 resultToEither :: Result x -> Either String x
 resultToEither r =
@@ -66,6 +67,7 @@ instance Monad Parser where
         Parser $ \ep ->
             do x <- runParser p ep
                runParser (f x) ep
+    fail err = Parser (\_ep -> fail err)
 
 instance MonadReader (Maybe EpochPrecision) Parser where
     ask = Parser (\ep -> pure ep)
