@@ -167,6 +167,16 @@ instance (FromInfluxValue a, FromInfluxPoint b) =>
                      <*> parseInfluxPoint (InfluxPoint (V.tail v))
              else fail "expected a non-empty vector"
 
+data Singleton a = Singleton a
+
+instance FromInfluxValue a =>
+    FromInfluxPoint (Singleton a) where
+    parseInfluxPoint p =
+        let v = influxPointValues p
+        in if V.length v >= 1
+            then Singleton <$> parseInfluxValue (V.head v)
+            else fail "expected a non-empty vector"
+
 instance FromInfluxPoint () where
     parseInfluxPoint _p = pure ()
 
