@@ -12,12 +12,17 @@ module Database.Influx.API
 
 import Database.Influx.Types
 import Database.Influx.Internal.Helpers
-      
+
+import Data.Aeson ((.:))
+import Control.Exception (catch, toException)
 import Control.Monad (void)
 import Data.Either (lefts, rights)
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
+import Network.HTTP.Types (Status(..))
+import qualified Data.Aeson as A
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
@@ -133,7 +138,22 @@ getQuery config mDatabase query =
                      _:_:_ -> fail "multiple tables"
                      [table] -> pure (parseInfluxTable table)
 
-write :: Config -> DatabaseName -> WriteParams -> [InfluxData] -> IO ()
+newtype JsonErrorResponse
+    = JsonErrorResponse
+    { _unJsonErrorResponse :: T.Text
+    } deriving (Show)
+
+instance A.FromJSON JsonErrorResponse where
+    parseJSON =
+        A.withObject "JsonErrorResponse" $ \o ->
+            JsonErrorResponse <$> o .: "error"
+
+write ::
+       Config
+    -> DatabaseName
+    -> WriteParams
+    -> [InfluxData]
+    -> IO WriteResponse
 write config database opts ds =
     do let url = configServer config `urlAppend` "/write"
            queryString =
@@ -145,8 +165,33 @@ write config database opts ds =
              map serializeInfluxData ds
        baseReq <- parseUrl url
        let req =
-             setRequestMethod "POST" $
+             (setRequestMethod "POST" $
              setQueryString queryString $
              maybe id setRequestManager (configManager config) $
-             setRequestBody reqBody baseReq
-       void $ httpLBS req
+             setRequestBody reqBody baseReq)
+             { checkStatus = checkHttpStatus }
+       (httpLBS req >>= handleResponse) `catch` \e ->
+           pure $ WriteFailed $ WriteFailureHttpException e
+    where
+      responseErrorMsg res =
+          case A.decode (responseBody res) of
+            Just (JsonErrorResponse t) -> t
+            Nothing -> T.decodeUtf8 $ LB.toStrict $ responseBody res
+      handleResponse res =
+          case statusCode (responseStatus res) of
+            sci | sci <= 200 && sci < 300 ->
+                pure WriteSuccessful
+            400 ->
+                pure $ WriteFailed $ BadInfluxWriteRequest $ responseErrorMsg res
+            404 ->
+                pure $ WriteFailed $ InfluxDbDoesNotExist $ responseErrorMsg res
+            500 ->
+                pure $ WriteFailed $ InfluxServerError $ responseErrorMsg res
+            sci -> fail $ "unexpected status code: " ++ show sci
+      expectedErrorStatusCodes = [400, 404, 500]
+      checkHttpStatus status@(Status sci _) resHeaders cookieJar =
+          if (200 <= sci && sci < 300) || sci `elem` expectedErrorStatusCodes
+            then Nothing
+            else
+                Just $ toException $
+                    StatusCodeException status resHeaders cookieJar

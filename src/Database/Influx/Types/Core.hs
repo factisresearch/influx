@@ -22,12 +22,14 @@ module Database.Influx.Types.Core
     , InfluxData(..)
     , WriteParams(..)
     , defaultWriteParams
+    , WriteFailureReason(..)
+    , WriteResponse(..)
     ) where
 
 import Data.Aeson ((.:), (.:?))
 import Data.String (IsString)
 import Data.Text (Text)
-import Network.HTTP.Client.Conduit (Manager)
+import Network.HTTP.Client.Conduit (HttpException, Manager)
 import qualified Data.Aeson.Types as A
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
@@ -169,7 +171,7 @@ data WriteParams
     = WriteParams
     { wp_precision :: !(Maybe EpochPrecision)
     , wp_retentionPolicy :: !(Maybe RetentionPolicy)
-  }
+    }
 
 defaultWriteParams :: WriteParams
 defaultWriteParams =
@@ -177,3 +179,15 @@ defaultWriteParams =
     { wp_precision = Nothing
     , wp_retentionPolicy = Nothing
     }
+
+data WriteFailureReason
+    = BadInfluxWriteRequest Text -- ^ Unacceptable request (status code 400). Can occur with a Line Protocol syntax error or if a user attempts to write values to a field that previously accepted a different value type. The returned JSON offers further information.
+    | InfluxDbDoesNotExist Text -- ^ Unacceptable request (status code 404). Can occur if a user attempts to write to a database that does not exist. The returned JSON offers further information.
+    | InfluxServerError Text -- ^ Status code 500. The system is overloaded or significantly impaired. Can occur if a user attempts to write to a retention policy that does not exist. The returned JSON offers further information.
+    | WriteFailureHttpException HttpException -- ^ any other 'HTTPException'
+    deriving (Show)
+
+data WriteResponse
+    = WriteSuccessful
+    | WriteFailed WriteFailureReason
+    deriving (Show)
