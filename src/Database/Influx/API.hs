@@ -26,7 +26,6 @@ import Data.Monoid ((<>))
 import Data.Text (Text)
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Simple
-import qualified Data.Aeson.Types as A
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -108,7 +107,7 @@ parseInfluxTable ::
   -> ParsedTable t
 parseInfluxTable table =
     let parseIfPossible row =
-            case A.parseEither parseInfluxPoint row of
+            case parseEither parseInfluxPoint Nothing row of
               Left _err -> Left row
               Right parsed -> Right parsed
         xs = map parseIfPossible (tableValues table)

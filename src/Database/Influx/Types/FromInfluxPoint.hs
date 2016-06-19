@@ -1,10 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Database.Influx.Types.FromInfluxPoint
-    ( Parser
+    ( Result(..)
+    , Parser, runParser
+    , parseEither
     , FromInfluxValue (..)
     , FromInfluxPoint (..)
     , Cons (..)
@@ -12,14 +15,68 @@ module Database.Influx.Types.FromInfluxPoint
 
 import Database.Influx.Types.Core
 
+import Control.Monad (ap)
+import Control.Monad.Reader.Class (MonadReader(..))
 import Data.Text (Text)
-import qualified Data.Aeson.Types as A
 import qualified Data.HVect as HV
 import qualified Data.Scientific as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-type Parser = A.Parser
+-- | The result of running a 'Parser'.
+data Result a
+    = Error String
+    | Success a
+    deriving (Eq, Show)
+
+instance Functor Result where
+  fmap _f (Error err) = Error err
+  fmap f (Success x) = Success (f x)
+
+instance Applicative Result where
+    pure = return
+    (<*>) = ap
+
+instance Monad Result where
+    return = Success
+    Error err >>= _f = Error err
+    Success x >>= f = f x
+
+resultToEither :: Result x -> Either String x
+resultToEither r =
+    case r of
+      Error err -> Left err
+      Success x -> Right x 
+
+newtype Parser a
+    = Parser
+    { runParser :: Maybe EpochPrecision -> Result a
+    }
+
+instance Functor Parser where
+    fmap f p = Parser (\ep -> f <$> runParser p ep)
+
+instance Applicative Parser where
+    pure = return
+    (<*>) = ap
+
+instance Monad Parser where
+    return x = Parser (\_ep -> return x)
+    p >>= f =
+        Parser $ \ep ->
+            do x <- runParser p ep
+               runParser (f x) ep
+
+instance MonadReader (Maybe EpochPrecision) Parser where
+    ask = Parser (\ep -> pure ep)
+    local f x = Parser (\ep -> runParser x (f ep))
+
+parseEither ::
+       (x -> Parser a)
+    -> Maybe EpochPrecision
+    -> x
+    -> Either String a
+parseEither p ep x = resultToEither (runParser (p x) ep)
 
 class FromInfluxValue a where
     parseInfluxValue :: Value -> Parser a
