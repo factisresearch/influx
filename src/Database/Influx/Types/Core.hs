@@ -22,13 +22,15 @@ module Database.Influx.Types.Core
     , InfluxData(..)
     , WriteParams(..)
     , defaultWriteParams
-    , WriteFailureReason(..)
+    , WriteFailureError(..)
     , WriteResponse(..)
     ) where
 
+import Control.Exception (Exception)
 import Data.Aeson ((.:), (.:?))
 import Data.String (IsString)
 import Data.Text (Text)
+import Data.Typeable (Typeable)
 import Network.HTTP.Client.Conduit (HttpException, Manager)
 import qualified Data.Aeson.Types as A
 import qualified Data.Scientific as S
@@ -180,14 +182,16 @@ defaultWriteParams =
     , wp_retentionPolicy = Nothing
     }
 
-data WriteFailureReason
+data WriteFailureError
     = BadInfluxWriteRequest Text -- ^ Unacceptable request (status code 400). Can occur with a Line Protocol syntax error or if a user attempts to write values to a field that previously accepted a different value type. The returned JSON offers further information.
     | InfluxDbDoesNotExist Text -- ^ Unacceptable request (status code 404). Can occur if a user attempts to write to a database that does not exist. The returned JSON offers further information.
     | InfluxServerError Text -- ^ Status code 500. The system is overloaded or significantly impaired. Can occur if a user attempts to write to a retention policy that does not exist. The returned JSON offers further information.
     | WriteFailureHttpException HttpException -- ^ any other 'HTTPException'
-    deriving (Show)
+    deriving (Show, Typeable)
+
+instance Exception WriteFailureError
 
 data WriteResponse
     = WriteSuccessful
-    | WriteFailed WriteFailureReason
+    | WriteFailed WriteFailureError
     deriving (Show)
