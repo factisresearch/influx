@@ -7,6 +7,7 @@ module Database.Influx.API.Tests
 
 import Database.Influx
 
+import Data.Monoid ((<>))
 import Test.Framework
 import qualified Data.Text as T
 
@@ -35,12 +36,77 @@ showDBs =
     do queryRes <- getQuery testConfig Nothing "SHOW DATABASES"
        pure $ map (\(Cons s ()) -> s) (parsedRows queryRes)
 
-test_createDropDB :: IO ()
-test_createDropDB =
-    do postQuery testConfig Nothing "CREATE DATABASE integration_test"
+createDb :: DatabaseName -> IO ()
+createDb name =
+    let query = Query $ "CREATE DATABASE IF NOT EXISTS " <> name
+    in postQuery testConfig Nothing query
+
+dropDb :: DatabaseName -> IO ()
+dropDb name =
+    let query = Query $ "DROP DATABASE IF EXISTS " <> name
+    in postQuery testConfig Nothing query
+
+test_createAndDropDB :: IO ()
+test_createAndDropDB =
+    do createDb "integration_test"
        dbs <- showDBs
-       postQuery testConfig Nothing "DROP DATABASE integration_test"
+       dropDb "integration_test"
        dbsAfter <- showDBs
        assertBool $
            "integration_test" `elem` dbs &&
            "integration_test" `notElem` dbsAfter
+
+withTestDb :: DatabaseName -> IO () -> IO ()
+withTestDb name action =
+    do dropDb name
+       createDb name
+       action
+       dropDb name
+
+test_writeWithWrongServerAddress :: IO ()
+test_writeWithWrongServerAddress =
+    do withTestDb db $
+           do res <- write wrongConfig db defaultWriteParams [row]
+              let isWriteFailureHttpException =
+                      case res of
+                        WriteFailed (WriteFailureHttpException _) -> True
+                        _ -> False
+              assertBool isWriteFailureHttpException
+    where
+      wrongConfig =
+          Config
+          { configCreds = Nothing
+          , configServer = "https://thisisaserverthatdoesnotexist.co.uk:8086"
+          , configManager = Nothing
+          }
+      db = "foobarblub"
+      row = InfluxData "issues" [("source", "client-a")] [("jira-id", Integer 1337)] Nothing
+
+test_writeToNonexistentDb :: IO ()
+test_writeToNonexistentDb =
+    do res <- write testConfig db defaultWriteParams [row]
+       let isDbDoesNotExistError =
+               case res of
+                 WriteFailed (InfluxDbDoesNotExist _errMsg) -> True
+                 _ -> False
+       assertBool isDbDoesNotExistError
+    where
+      db = "thisisadatabasethatdoesnotexist"
+      row = InfluxData "issues" [("source", "client-a")] [("jira-id", Integer 1337)] Nothing
+
+test_writeInconsistentData :: IO ()
+test_writeInconsistentData =
+    withTestDb db $
+        do res <- write testConfig db defaultWriteParams rows
+           let isBadWriteReqError =
+                   case res of
+                     WriteFailed (BadInfluxWriteRequest _) -> True
+                     _ -> False
+           assertBool isBadWriteReqError
+    where
+      db = "foobarblub"
+      rows =
+          -- writing this fails because the types for "jira-id" don't match
+          [ InfluxData "issues" [("source", "client-a")] [("jira-id", Integer 1337)] Nothing
+          , InfluxData "issues" [("source", "client-a")] [("jira-id", String "1337")] Nothing
+          ]
