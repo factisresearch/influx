@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -22,7 +25,9 @@ module Database.Influx.Types.Core
     , InfluxData(..)
     , WriteParams(..)
     , defaultWriteParams
-    , WriteFailureError(..)
+    , QueryFailure(..)
+    , QueryResponse(..)
+    , WriteFailure(..)
     , WriteResponse(..)
     ) where
 
@@ -95,7 +100,7 @@ data Value
     | Integer !Integer -- ^ only used for serialization
     | Bool !Bool
     | Null
-    deriving (Show)
+    deriving (Show, Eq)
 
 instance A.FromJSON Value where
     parseJSON val =
@@ -182,16 +187,29 @@ defaultWriteParams =
     , wp_retentionPolicy = Nothing
     }
 
-data WriteFailureError
+data QueryFailure
+    = BadInfluxQueryRequest Text -- ^ Unacceptable request (status code 400). Can occur with a syntactically incorrect query. The returned JSON offers further information.
+    | QueryFailureHttpException HttpException -- any other 'HttpException'
+    | QueryResponseJsonParseError String
+    deriving (Show, Typeable)
+
+instance Exception QueryFailure
+
+data QueryResponse a
+    = QueryResult a
+    | QueryFailed QueryFailure
+    deriving (Show, Functor, Foldable, Traversable)
+
+data WriteFailure
     = BadInfluxWriteRequest Text -- ^ Unacceptable request (status code 400). Can occur with a Line Protocol syntax error or if a user attempts to write values to a field that previously accepted a different value type. The returned JSON offers further information.
     | InfluxDbDoesNotExist Text -- ^ Unacceptable request (status code 404). Can occur if a user attempts to write to a database that does not exist. The returned JSON offers further information.
     | InfluxServerError Text -- ^ Status code 500. The system is overloaded or significantly impaired. Can occur if a user attempts to write to a retention policy that does not exist. The returned JSON offers further information.
-    | WriteFailureHttpException HttpException -- ^ any other 'HTTPException'
+    | WriteFailureHttpException HttpException -- ^ any other 'HttpException'
     deriving (Show, Typeable)
 
-instance Exception WriteFailureError
+instance Exception WriteFailure
 
 data WriteResponse
     = WriteSuccessful
-    | WriteFailed WriteFailureError
+    | WriteFailed WriteFailure
     deriving (Show)

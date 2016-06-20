@@ -35,6 +35,8 @@ library
                      , hvect
                      , mtl
                      , http-types
+                     , conduit
+                     , conduit-extra
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall
