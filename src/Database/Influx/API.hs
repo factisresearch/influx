@@ -76,11 +76,11 @@ queryRaw ::
     -> QueryParams
     -> Query
     -> IO [InfluxResult]
-queryRaw method config opts query =
+queryRaw method config params query =
     do let url = configServer config `urlAppend` "/query"
            queryString =
              maybe [] credsToQueryString (configCreds config) ++
-             queryParamsToQueryString opts ++
+             queryParamsToQueryString params ++
              [ ("q", Just (T.encodeUtf8 (unQuery query))) ]
        baseReq <- parseUrl url
        let req =
@@ -124,8 +124,8 @@ getQuery ::
     -> Query
     -> IO (ParsedTable t)
 getQuery config mDatabase query =
-    do let opts = defaultQueryParams { qp_database = mDatabase }
-       results <- getQueryRaw config opts query
+    do let params = defaultQueryParams { qp_database = mDatabase }
+       results <- getQueryRaw config params query
        case results of
          [] -> fail "no result"
          _:_:_ -> fail "multiple results"
@@ -150,16 +150,16 @@ instance A.FromJSON JsonErrorResponse where
 
 write ::
        Config
-    -> DatabaseName
     -> WriteParams
+    -> DatabaseName
     -> [InfluxData]
     -> IO WriteResponse
-write config database opts ds =
+write config params database ds =
     do let url = configServer config `urlAppend` "/write"
            queryString =
              [ ("db", Just (T.encodeUtf8 database)) ] ++
              maybe [] credsToQueryString (configCreds config) ++
-             writeParamsToQueryString opts
+             writeParamsToQueryString params
            reqBody =
              RequestBodyBS $ T.encodeUtf8 $ T.unlines $
              map serializeInfluxData ds

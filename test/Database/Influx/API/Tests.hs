@@ -66,7 +66,7 @@ withTestDb name action =
 test_writeWithWrongServerAddress :: IO ()
 test_writeWithWrongServerAddress =
     do withTestDb db $
-           do res <- write wrongConfig db defaultWriteParams [row]
+           do res <- write wrongConfig defaultWriteParams db [row]
               let isWriteFailureHttpException =
                       case res of
                         WriteFailed (WriteFailureHttpException _) -> True
@@ -84,7 +84,7 @@ test_writeWithWrongServerAddress =
 
 test_writeToNonexistentDb :: IO ()
 test_writeToNonexistentDb =
-    do res <- write testConfig db defaultWriteParams [row]
+    do res <- write testConfig defaultWriteParams db [row]
        let isDbDoesNotExistError =
                case res of
                  WriteFailed (InfluxDbDoesNotExist _errMsg) -> True
@@ -97,7 +97,7 @@ test_writeToNonexistentDb =
 test_writeInconsistentData :: IO ()
 test_writeInconsistentData =
     withTestDb db $
-        do res <- write testConfig db defaultWriteParams rows
+        do res <- write testConfig defaultWriteParams db rows
            let isBadWriteReqError =
                    case res of
                      WriteFailed (BadInfluxWriteRequest _) -> True
