@@ -159,12 +159,11 @@ data Cons a b = Cons { car :: a, cdr :: b }
 instance (FromInfluxValue a, FromInfluxPoint b) =>
     FromInfluxPoint (Cons a b) where
     parseInfluxPoint p =
-        let v = influxPointValues p
+        let v = point_values p
         in if V.length v >= 1
-             then
-                 Cons
-                     <$> parseInfluxValue (V.head v)
-                     <*> parseInfluxPoint (InfluxPoint (V.tail v))
+             then Cons
+                 <$> parseInfluxValue (V.head v)
+                 <*> parseInfluxPoint (InfluxPoint (V.tail v))
              else fail "expected a non-empty vector"
 
 data Singleton a = Singleton a
@@ -172,7 +171,7 @@ data Singleton a = Singleton a
 instance FromInfluxValue a =>
     FromInfluxPoint (Singleton a) where
     parseInfluxPoint p =
-        let v = influxPointValues p
+        let v = point_values p
         in if V.length v >= 1
             then Singleton <$> parseInfluxValue (V.head v)
             else fail "expected a non-empty vector"

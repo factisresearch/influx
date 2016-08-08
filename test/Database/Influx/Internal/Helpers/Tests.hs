@@ -14,9 +14,9 @@ test_properLineProtocol =
     let line = "cpu,host=server\\ 01,region=uswest value=1i,msg=\"all systems nominal\""
         repr =
             InfluxData
-            { dataMeasurement = "cpu"
-            , dataTags = [("host", "server 01"), ("region", "uswest")]
-            , dataFields = [("value", Integer 1), ("msg", String "all systems nominal")]
-            , dataTimestamp = Nothing
+            { data_measurement = "cpu"
+            , data_tags = [("host", "server 01"), ("region", "uswest")]
+            , data_fields = [("value", Integer 1), ("msg", String "all systems nominal")]
+            , data_timestamp = Nothing
             }
     in assertEqual line (serializeInfluxData repr)

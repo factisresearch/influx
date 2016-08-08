@@ -31,7 +31,7 @@ import qualified Data.Text.Encoding as T
 
 ping :: Config -> IO (Maybe InfluxVersion)
 ping config =
-    do let url = configServer config `urlAppend` "/ping"
+    do let url = config_server config `urlAppend` "/ping"
        request <- setRequestMethod "HEAD" <$> parseUrl url
        response <- httpLBS request
        let version = getResponseHeader "X-Influxdb-Version" response
@@ -80,16 +80,16 @@ queryRaw ::
     -> Query
     -> IO (QueryResponse [InfluxResult])
 queryRaw method config params query =
-    do let url = configServer config `urlAppend` "/query"
+    do let url = config_server config `urlAppend` "/query"
            queryString =
-             maybe [] credsToQueryString (configCreds config) ++
-             queryParamsToQueryString params ++
-             [ ("q", Just (T.encodeUtf8 (unQuery query))) ]
+               maybe [] credsToQueryString (config_creds config) ++
+               queryParamsToQueryString params ++
+               [("q", Just (T.encodeUtf8 (unQuery query)))]
        baseReq <- parseUrl url
        let req =
-             setRequestMethod method $
-             maybe id setRequestManager (configManager config) $
-             setRequestQueryString queryString baseReq
+               setRequestMethod method $
+               maybe id setRequestManager (config_manager config) $
+               setRequestQueryString queryString baseReq
        httpSink req responseSink `catch` \e ->
            pure $ QueryFailed $ QueryFailureHttpException e
     where
@@ -115,22 +115,21 @@ postQueryRaw :: Config -> QueryParams -> Query -> IO (QueryResponse [InfluxResul
 postQueryRaw = queryRaw "POST"
 
 postQuery :: Config -> Maybe DatabaseName -> Query -> IO ()
-postQuery config mDatabase query =
-    let params = defaultQueryParams { qp_database = mDatabase }
-    in void (postQueryRaw config params query)
+postQuery config mDatabase query = void (postQueryRaw config params query)
+    where params = defaultQueryParams { qp_database = mDatabase }
 
 parseInfluxTable ::
-  FromInfluxPoint t
-  => InfluxTable
-  -> ParsedTable t
+    FromInfluxPoint t
+    => InfluxTable
+    -> ParsedTable t
 parseInfluxTable table =
     let parseIfPossible row =
             case parseEither parseInfluxPoint Nothing row of
               Left _err -> Left row
               Right parsed -> Right parsed
-        xs = map parseIfPossible (tableValues table)
+        xs = map parseIfPossible (table_values table)
         parsedRows = rights xs
-        pointsThatCouldNotBeParsed = lefts xs
+        notParsedRows = lefts xs
     in ParsedTable {..}
 
 getQuery ::
@@ -149,14 +148,14 @@ getQuery config mDatabase query =
       parseResults results =
          case results of
            [] -> fail "no result"
-           _:_:_ -> fail "multiple results"
+           (_:_:_) -> fail "multiple results"
            [result] ->
-               case resultTables result of
+               case result_tables result of
                  Nothing -> fail "result has no points!"
                  Just tables ->
                      case tables of
                        [] -> fail "no tables"
-                       _:_:_ -> fail "multiple tables"
+                       (_:_:_) -> fail "multiple tables"
                        [table] -> pure (parseInfluxTable table)
 
 newtype JsonErrorResponse
@@ -197,21 +196,21 @@ write ::
     -> [InfluxData]
     -> IO WriteResponse
 write config params database ds =
-    do let url = configServer config `urlAppend` "/write"
+    do let url = config_server config `urlAppend` "/write"
            queryString =
-             [ ("db", Just (T.encodeUtf8 database)) ] ++
-             maybe [] credsToQueryString (configCreds config) ++
-             writeParamsToQueryString params
+               [ ("db", Just (T.encodeUtf8 database)) ] ++
+               maybe [] credsToQueryString (config_creds config) ++
+               writeParamsToQueryString params
            reqBody =
-             RequestBodyBS $ T.encodeUtf8 $ T.unlines $
-             map serializeInfluxData ds
+               RequestBodyBS $ T.encodeUtf8 $ T.unlines $
+               map serializeInfluxData ds
        baseReq <- parseUrl url
        let req =
-             (setRequestMethod "POST" $
-             setQueryString queryString $
-             maybe id setRequestManager (configManager config) $
-             setRequestBody reqBody baseReq)
-             { checkStatus = checkStatusWithExpectedErrorCodes [400, 404, 500] }
+               (setRequestMethod "POST" $
+               setQueryString queryString $
+               maybe id setRequestManager (config_manager config) $
+               setRequestBody reqBody baseReq)
+               { checkStatus = checkStatusWithExpectedErrorCodes [400, 404, 500] }
        (httpLBS req >>= handleResponse) `catch` \e ->
            pure $ WriteFailed $ WriteFailureHttpException e
     where

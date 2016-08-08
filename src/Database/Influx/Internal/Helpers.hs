@@ -21,14 +21,15 @@ import qualified Data.Text.Encoding as T
 
 urlAppend :: String -> String -> String
 urlAppend base path = base' ++ "/" ++ path'
-  where base' = if last base == '/' then init base else base
-        path' = if head path == '/' then tail path else path
-    
+    where
+      base' = if last base == '/' then init base else base
+      path' = if head path == '/' then tail path else path
+
 credsToQueryString :: Credentials -> [(B.ByteString, Maybe B.ByteString)]
 credsToQueryString creds =
     fmap (second Just) $
-    [ ("u", T.encodeUtf8 (credsUser creds))
-    , ("p", T.encodeUtf8 (credsPassword creds))
+    [ ("u", T.encodeUtf8 (creds_user creds))
+    , ("p", T.encodeUtf8 (creds_password creds))
     ]
 
 epochToBytestring :: EpochPrecision -> B.ByteString
@@ -63,14 +64,12 @@ serializeValue v =
 
 serializeInfluxData :: InfluxData -> Text
 serializeInfluxData d =
-    T.intercalate "," (escape (dataMeasurement d) : map serializeTag (dataTags d)) <> " " <>
-    T.intercalate "," (mapMaybe serializeField (dataFields d)) <>
-    maybe "" (\t -> " " <> serializeTimeStamp t) (dataTimestamp d)
+    T.intercalate "," (escape (data_measurement d) : map serializeTag (data_tags d)) <> " " <>
+    T.intercalate "," (mapMaybe serializeField (data_fields d)) <>
+    maybe "" (\t -> " " <> serializeTimeStamp t) (data_timestamp d)
     where
-      serializeTag (k, v) =
-          escape k <> "=" <> escape v
-      serializeField (k, v) =
-          ((escape k <> "=") <>) <$> serializeValue v
+      serializeTag (k, v) = escape k <> "=" <> escape v
+      serializeField (k, v) = ((escape k <> "=") <>) <$> serializeValue v
       serializeTimeStamp t = T.pack $ show $ unTimeStamp t
       escape = T.replace "," "\\," . T.replace " " "\\ "
 

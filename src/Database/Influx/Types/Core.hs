@@ -41,17 +41,18 @@ import qualified Data.Aeson.Types as A
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
 
--- | User credentials
+-- | User credentials.
 data Credentials
     = Credentials
-    { credsUser :: !Text
-    , credsPassword :: !Text
+    { creds_user :: !Text
+    , creds_password :: !Text
     } deriving (Show)
 
-data Config = Config
-    { configCreds  :: !(Maybe Credentials)
-    , configServer :: !String
-    , configManager :: !(Maybe Manager)
+data Config
+    = Config
+    { config_creds :: !(Maybe Credentials)
+    , config_server :: !String
+    , config_manager :: !(Maybe Manager)
     }
 
 type RetentionPolicy = Text
@@ -114,22 +115,22 @@ instance A.FromJSON Value where
 
 newtype InfluxPoint
     = InfluxPoint
-    { influxPointValues :: V.Vector Value
+    { point_values :: V.Vector Value
     } deriving (Show, A.FromJSON)
 
 data InfluxTable
     = InfluxTable
-    { tableName :: Text
-    , tableColumns :: V.Vector Text
-    , tableValues :: [InfluxPoint]
+    { table_name :: !Text
+    , table_columns :: !(V.Vector Text)
+    , table_values :: ![InfluxPoint]
     } deriving (Show)
 
 instance A.FromJSON InfluxTable where
     parseJSON =
         A.withObject "InfluxTable" $ \o ->
-            do tableName <- o .: "name"
-               tableColumns <- o .: "columns"
-               tableValues <- o .: "values"
+            do table_name <- o .: "name"
+               table_columns <- o .: "columns"
+               table_values <- o .: "values"
                pure InfluxTable {..}
 
 newtype InfluxResults
@@ -144,21 +145,21 @@ instance A.FromJSON InfluxResults where
 
 data InfluxResult
     = InfluxResult
-    { resultError :: Maybe String
-    , resultTables :: Maybe [InfluxTable]
+    { result_error :: !(Maybe String)
+    , result_tables :: !(Maybe [InfluxTable])
     } deriving (Show)
 
 instance A.FromJSON InfluxResult where
     parseJSON =
         A.withObject "InfluxResult" $ \o ->
-            do resultError <- o .:? "error"
-               resultTables <- o .:? "series"
+            do result_error <- o .:? "error"
+               result_tables <- o .:? "series"
                pure InfluxResult {..}
 
 data ParsedTable t
     = ParsedTable
-    { parsedRows :: [t]
-    , pointsThatCouldNotBeParsed :: [InfluxPoint]
+    { parsedRows :: ![t]
+    , notParsedRows :: ![InfluxPoint]
     } deriving (Show)
 
 newtype TimeStamp
@@ -168,10 +169,10 @@ newtype TimeStamp
 
 data InfluxData
     = InfluxData
-    { dataMeasurement :: Text
-    , dataTags :: [(Text, Text)]
-    , dataFields :: [(Text, Value)]
-    , dataTimestamp :: Maybe TimeStamp
+    { data_measurement :: !Text
+    , data_tags :: ![(Text, Text)]
+    , data_fields :: ![(Text, Value)]
+    , data_timestamp :: !(Maybe TimeStamp)
     }
 
 data WriteParams
@@ -188,28 +189,28 @@ defaultWriteParams =
     }
 
 data QueryFailure
-    = BadInfluxQueryRequest Text -- ^ Unacceptable request (status code 400). Can occur with a syntactically incorrect query. The returned JSON offers further information.
-    | QueryFailureHttpException HttpException -- any other 'HttpException'
-    | QueryResponseJsonParseError String
+    = BadInfluxQueryRequest !Text -- ^ Unacceptable request (status code 400). Can occur with a syntactically incorrect query. The returned JSON offers further information.
+    | QueryFailureHttpException !HttpException -- any other 'HttpException'
+    | QueryResponseJsonParseError !String
     deriving (Show, Typeable)
 
 instance Exception QueryFailure
 
 data QueryResponse a
-    = QueryResult a
-    | QueryFailed QueryFailure
+    = QueryResult !a
+    | QueryFailed !QueryFailure
     deriving (Show, Functor, Foldable, Traversable)
 
 data WriteFailure
-    = BadInfluxWriteRequest Text -- ^ Unacceptable request (status code 400). Can occur with a Line Protocol syntax error or if a user attempts to write values to a field that previously accepted a different value type. The returned JSON offers further information.
-    | InfluxDbDoesNotExist Text -- ^ Unacceptable request (status code 404). Can occur if a user attempts to write to a database that does not exist. The returned JSON offers further information.
-    | InfluxServerError Text -- ^ Status code 500. The system is overloaded or significantly impaired. Can occur if a user attempts to write to a retention policy that does not exist. The returned JSON offers further information.
-    | WriteFailureHttpException HttpException -- ^ any other 'HttpException'
+    = BadInfluxWriteRequest !Text -- ^ Unacceptable request (status code 400). Can occur with a Line Protocol syntax error or if a user attempts to write values to a field that previously accepted a different value type. The returned JSON offers further information.
+    | InfluxDbDoesNotExist !Text -- ^ Unacceptable request (status code 404). Can occur if a user attempts to write to a database that does not exist. The returned JSON offers further information.
+    | InfluxServerError !Text -- ^ Status code 500. The system is overloaded or significantly impaired. Can occur if a user attempts to write to a retention policy that does not exist. The returned JSON offers further information.
+    | WriteFailureHttpException !HttpException -- ^ any other 'HttpException'
     deriving (Show, Typeable)
 
 instance Exception WriteFailure
 
 data WriteResponse
     = WriteSuccessful
-    | WriteFailed WriteFailure
+    | WriteFailed !WriteFailure
     deriving (Show)
