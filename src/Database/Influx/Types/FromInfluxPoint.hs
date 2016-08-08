@@ -70,8 +70,8 @@ instance Monad Parser where
     fail err = Parser (\_ep -> fail err)
 
 instance MonadReader (Maybe EpochPrecision) Parser where
-    ask = Parser (\ep -> pure ep)
-    local f x = Parser (\ep -> runParser x (f ep))
+    ask = Parser pure
+    local f x = Parser $ runParser x . f
 
 parseEither ::
        (x -> Parser a)
