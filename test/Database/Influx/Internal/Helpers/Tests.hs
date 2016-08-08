@@ -3,7 +3,8 @@
 
 module Database.Influx.Internal.Helpers.Tests
    ( htf_thisModulesTests
-   ) where
+   )
+where
 
 import Database.Influx.Internal.Helpers
 import Database.Influx.Types

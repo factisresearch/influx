@@ -29,7 +29,8 @@ module Database.Influx.Types.Core
     , QueryResponse(..)
     , WriteFailure(..)
     , WriteResponse(..)
-    ) where
+    )
+where
 
 import Control.Exception (Exception)
 import Data.Aeson ((.:), (.:?))

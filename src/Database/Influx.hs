@@ -6,5 +6,3 @@ where
 
 import Database.Influx.API
 import Database.Influx.Types
-
-

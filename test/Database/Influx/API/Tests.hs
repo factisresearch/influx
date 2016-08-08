@@ -3,7 +3,8 @@
 
 module Database.Influx.API.Tests
    ( htf_thisModulesTests
-   ) where
+   )
+where
 
 import Database.Influx
 
@@ -65,13 +66,13 @@ withTestDb name action =
 
 test_writeWithWrongServerAddress :: IO ()
 test_writeWithWrongServerAddress =
-    do withTestDb db $
-           do res <- write wrongConfig defaultWriteParams db [row]
-              let isWriteFailureHttpException =
-                      case res of
-                        WriteFailed (WriteFailureHttpException _) -> True
-                        _ -> False
-              assertBool isWriteFailureHttpException
+    withTestDb db $
+    do res <- write wrongConfig defaultWriteParams db [row]
+       let isWriteFailureHttpException =
+               case res of
+                 WriteFailed (WriteFailureHttpException _) -> True
+                 _ -> False
+       assertBool isWriteFailureHttpException
     where
       wrongConfig =
           Config
@@ -97,12 +98,12 @@ test_writeToNonexistentDb =
 test_writeInconsistentData :: IO ()
 test_writeInconsistentData =
     withTestDb db $
-        do res <- write testConfig defaultWriteParams db rows
-           let isBadWriteReqError =
-                   case res of
-                     WriteFailed (BadInfluxWriteRequest _) -> True
-                     _ -> False
-           assertBool isBadWriteReqError
+    do res <- write testConfig defaultWriteParams db rows
+       let isBadWriteReqError =
+               case res of
+                 WriteFailed (BadInfluxWriteRequest _) -> True
+                 _ -> False
+       assertBool isBadWriteReqError
     where
       db = "foobarblub"
       rows =

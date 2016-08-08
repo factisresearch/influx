@@ -11,7 +11,8 @@ module Database.Influx.Types.FromInfluxPoint
     , FromInfluxValue (..)
     , FromInfluxPoint (..)
     , Cons (..)
-    ) where
+    )
+where
 
 import Database.Influx.Types.Core
 
@@ -25,13 +26,13 @@ import qualified Data.Vector as V
 
 -- | The result of running a 'Parser'.
 data Result a
-    = Error String
-    | Success a
+    = Error !String
+    | Success !a
     deriving (Eq, Show)
 
 instance Functor Result where
-  fmap _f (Error err) = Error err
-  fmap f (Success x) = Success (f x)
+    fmap _f (Error err) = Error err
+    fmap f (Success x) = Success (f x)
 
 instance Applicative Result where
     pure = return
@@ -47,7 +48,7 @@ resultToEither :: Result x -> Either String x
 resultToEither r =
     case r of
       Error err -> Left err
-      Success x -> Right x 
+      Success x -> Right x
 
 newtype Parser a
     = Parser

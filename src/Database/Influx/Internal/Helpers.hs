@@ -7,7 +7,8 @@ module Database.Influx.Internal.Helpers
     , queryParamsToQueryString
     , serializeInfluxData
     , writeParamsToQueryString
-    ) where
+    )
+where
 
 import Database.Influx.Types.Core
 

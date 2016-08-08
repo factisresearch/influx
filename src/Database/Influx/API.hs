@@ -8,7 +8,8 @@ module Database.Influx.API
     , postQueryRaw
     , postQuery
     , write
-    ) where
+    )
+where
 
 import Database.Influx.Types
 import Database.Influx.Internal.Helpers
@@ -185,9 +186,8 @@ checkStatusWithExpectedErrorCodes ::
 checkStatusWithExpectedErrorCodes expectedErrorCodes status@(Status sci _) resHeaders cookieJar =
     if (200 <= sci && sci < 300) || sci `elem` expectedErrorCodes
       then Nothing
-      else
-          Just $ toException $
-              StatusCodeException status resHeaders cookieJar
+      else Just $ toException $
+           StatusCodeException status resHeaders cookieJar
 
 write ::
        Config
