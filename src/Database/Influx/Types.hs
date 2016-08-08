@@ -1,6 +1,8 @@
 module Database.Influx.Types
-    ( module X
-    ) where
+    ( module Database.Influx.Types.Core
+    , module Database.Influx.Types.FromInfluxPoint
+    )
+where
 
-import Database.Influx.Types.Core as X
-import Database.Influx.Types.FromInfluxPoint as X
+import Database.Influx.Types.Core
+import Database.Influx.Types.FromInfluxPoint

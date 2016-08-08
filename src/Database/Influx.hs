@@ -1,8 +1,10 @@
 module Database.Influx
-    ( module X
-    ) where
+    ( module Database.Influx.API
+    , module Database.Influx.Types
+    )
+where
 
-import Database.Influx.API as X
-import Database.Influx.Types as X
+import Database.Influx.API
+import Database.Influx.Types
 
 
