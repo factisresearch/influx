@@ -15,15 +15,15 @@ import qualified Data.Text as T
 testConfig :: Config
 testConfig =
     Config
-    { configCreds = Just creds
-    , configServer = "http://localhost:8086"
-    , configManager = Nothing
+    { config_creds = Just creds
+    , config_server = "http://localhost:8086"
+    , config_manager = Nothing
     }
     where
       creds =
           Credentials
-          { credsUser = "root"
-          , credsPassword = "root"
+          { creds_user = "root"
+          , creds_password = "root"
           }
 
 test_ping :: IO ()
@@ -76,9 +76,9 @@ test_writeWithWrongServerAddress =
     where
       wrongConfig =
           Config
-          { configCreds = Nothing
-          , configServer = "https://thisisaserverthatdoesnotexist.co.uk:8086"
-          , configManager = Nothing
+          { config_creds = Nothing
+          , config_server = "https://thisisaserverthatdoesnotexist.co.uk:8086"
+          , config_manager = Nothing
           }
       db = "foobarblub"
       row = InfluxData "issues" [("source", "client-a")] [("jira-id", Integer 1337)] Nothing
