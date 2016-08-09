@@ -4,6 +4,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- | This module provides simple parsing facilities for extracting usable data from
+-- a raw 'InfluxTable' to a 'ParsedTable'.
 module Database.Influx.Types.FromInfluxPoint
     ( Result(..)
     , Parser, runParser
@@ -50,9 +52,14 @@ resultToEither r =
       Error err -> Left err
       Success x -> Right x
 
+-- | The parser monad is a function supplied with the timestamp precision of the
+-- data to be parsed. It returns either an error message if a parsing failure
+-- occurs, or the parsed value.
 newtype Parser a
     = Parser
     { runParser :: Maybe EpochPrecision -> Result a
+    -- ^ Given an epoch precision, returns the parse result.
+    -- If no epoch precision is supplied, 'Nanoseconds' will be used.
     }
 
 instance Functor Parser where
@@ -74,13 +81,15 @@ instance MonadReader (Maybe EpochPrecision) Parser where
     ask = Parser pure
     local f x = Parser $ runParser x . f
 
+-- | Parses raw InfluxDB data.
 parseEither ::
-       (x -> Parser a)
-    -> Maybe EpochPrecision
-    -> x
-    -> Either String a
+       (x -> Parser a) -- ^ a function for parsing an InfluxDB value.
+    -> Maybe EpochPrecision -- ^ an epoch precision with which to interpret the time stamps.
+    -> x -- ^ the parser input.
+    -> Either String a -- ^ either an error message or a parsed value.
 parseEither p ep x = resultToEither (runParser (p x) ep)
 
+-- | Any value that can be extracted from an InfluxDB 'Value'.
 class FromInfluxValue a where
     parseInfluxValue :: Value -> Parser a
 
@@ -149,12 +158,14 @@ instance FromInfluxValue Time.UTCTime where
           timestampFormat = "%Y-%m-%dT%H:%M:%SZ"
 -}
 
+-- | Any value that can be parsed out of an 'InfluxPoint'.
 class FromInfluxPoint a where
     parseInfluxPoint :: InfluxPoint -> Parser a
 
 instance FromInfluxPoint InfluxPoint where
     parseInfluxPoint = pure
 
+-- | A cons-cell used for parsing sequences of InfluxDB data.
 data Cons a b = Cons { car :: a, cdr :: b }
 
 instance (FromInfluxValue a, FromInfluxPoint b) =>

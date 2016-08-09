@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | This module provides functions related to query serialization.
 module Database.Influx.Internal.Helpers
     ( urlAppend
     , credsToQueryString
@@ -20,12 +21,14 @@ import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
+-- | Safely appends two URL components. Prevents two slashes from clashing.
 urlAppend :: String -> String -> String
 urlAppend base path = base' ++ "/" ++ path'
     where
       base' = if last base == '/' then init base else base
       path' = if head path == '/' then tail path else path
 
+-- | Converts credentials to a string that can be used in a valid query.
 credsToQueryString :: Credentials -> [(B.ByteString, Maybe B.ByteString)]
 credsToQueryString creds =
     fmap (second Just) $
@@ -33,6 +36,7 @@ credsToQueryString creds =
     , ("p", T.encodeUtf8 (creds_password creds))
     ]
 
+-- | Renders a time unit (epoch precision) into the commonly known symbols. (h/m/s/ms/us/ns)
 epochToBytestring :: EpochPrecision -> B.ByteString
 epochToBytestring epoch =
     case epoch of
@@ -43,6 +47,7 @@ epochToBytestring epoch =
       Microseconds -> "us"
       Nanoseconds -> "ns"
 
+-- | Renders a type-safe 'QueryParams' value into a key-value pair for a valid query.
 queryParamsToQueryString :: QueryParams -> [(B.ByteString, Maybe B.ByteString)]
 queryParamsToQueryString opts =
     fmap (second Just) $
@@ -63,6 +68,9 @@ serializeValue v =
         Just $ if b then "true" else "false"
       Null -> Nothing
 
+-- | Converts actual InfluxDB data into valid
+-- <https://docs.influxdata.com/influxdb/v0.13//write_protocols/write_syntax/#line-protocol
+-- line protocol> data.
 serializeInfluxData :: InfluxData -> Text
 serializeInfluxData d =
     T.intercalate "," (escape (data_measurement d) : map serializeTag (data_tags d)) <> " " <>
@@ -74,6 +82,7 @@ serializeInfluxData d =
       serializeTimeStamp t = T.pack $ show $ unTimeStamp t
       escape = T.replace "," "\\," . T.replace " " "\\ "
 
+-- | Renders a type-safe 'WriteParams' value into a key-value pair for a valid query.
 writeParamsToQueryString :: WriteParams -> [(B.ByteString, Maybe B.ByteString)]
 writeParamsToQueryString opts =
     fmap (second Just) $

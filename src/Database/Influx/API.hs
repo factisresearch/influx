@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- | This module provides functions for interacting with an InfluxDB database server, i.e.
+-- pinging, querying and writing data.
 module Database.Influx.API
     ( ping
     , getQueryRaw
@@ -30,6 +32,8 @@ import qualified Data.Conduit.List as C
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
+-- | Pings the InfluxDB server which, in response to that, should send its current API version.
+-- This version is returned.
 ping :: Config -> IO (Maybe InfluxVersion)
 ping config =
     do let url = config_server config `urlAppend` "/ping"
@@ -109,12 +113,16 @@ queryRaw method config params query =
                    pure $ QueryFailed $ BadInfluxQueryRequest $ responseErrorMsg (bs <$ res)
             sci -> fail $ "unexpected status code: " ++ show sci
 
+-- | Queries a database using a GET request.
 getQueryRaw :: Config -> QueryParams -> Query -> IO (QueryResponse [InfluxResult])
 getQueryRaw = queryRaw "GET"
 
+-- | Queries a database using a POST request.
 postQueryRaw :: Config -> QueryParams -> Query -> IO (QueryResponse [InfluxResult])
 postQueryRaw = queryRaw "POST"
 
+-- | POSTs a query to a specific database (the given database overrides the one
+-- provided in the config) without returning the returned query results.
 postQuery :: Config -> Maybe DatabaseName -> Query -> IO ()
 postQuery config mDatabase query = void (postQueryRaw config params query)
     where params = defaultQueryParams { qp_database = mDatabase }
@@ -133,6 +141,8 @@ parseInfluxTable table =
         notParsedRows = lefts xs
     in ParsedTable {..}
 
+-- | Queries a specified database (the given database overrides the one in the config)
+-- with a given query and returns parsed table data.
 getQuery ::
     FromInfluxPoint t
     => Config
@@ -189,6 +199,7 @@ checkStatusWithExpectedErrorCodes expectedErrorCodes status@(Status sci _) resHe
       else Just $ toException $
            StatusCodeException status resHeaders cookieJar
 
+-- | Writes to a specified database (which overrides the one provided in the config) some influx data.
 write ::
        Config
     -> WriteParams
