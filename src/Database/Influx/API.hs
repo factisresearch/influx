@@ -37,7 +37,7 @@ import qualified Data.Text.Encoding as T
 ping :: Config -> IO (Maybe InfluxVersion)
 ping config =
     do let url = config_server config `urlAppend` "/ping"
-       request <- setRequestMethod "HEAD" <$> parseUrl url
+       request <- setRequestMethod "HEAD" <$> parseRequest url
        response <- httpLBS request
        let version = getResponseHeader "X-Influxdb-Version" response
        return $
@@ -90,7 +90,7 @@ queryRaw method config params query =
                maybe [] credsToQueryString (config_creds config) ++
                queryParamsToQueryString params ++
                [("q", Just (T.encodeUtf8 (unQuery query)))]
-       baseReq <- parseUrl url
+       baseReq <- parseRequest url
        let req =
                setRequestMethod method $
                maybe id setRequestManager (config_manager config) $
@@ -215,7 +215,7 @@ write config params database ds =
            reqBody =
                RequestBodyBS $ T.encodeUtf8 $ T.unlines $
                map serializeInfluxData ds
-       baseReq <- parseUrl url
+       baseReq <- parseRequest url
        let req =
                (setRequestMethod "POST" $
                setQueryString queryString $
