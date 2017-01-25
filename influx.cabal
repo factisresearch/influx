@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                influx
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Simple InfluxDB library
 -- description:
 license:             BSD3
@@ -27,6 +27,7 @@ library
   -- other-extensions:
   build-depends:       base
                      , http-conduit
+                     , http-client >= 0.5
                      , text
                      , bytestring
                      , aeson

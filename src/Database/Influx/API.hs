@@ -17,13 +17,13 @@ import Database.Influx.Types
 import Database.Influx.Internal.Helpers
 
 import Data.Aeson ((.:))
-import Control.Exception (catch, throw, toException, SomeException)
+import Control.Exception (catch, throw)
 import Control.Monad (void)
 import Data.Either (lefts, rights)
 import Network.HTTP.Client.Conduit
+import Network.HTTP.Client.Internal (BodyReader, throwHttp)
 import Network.HTTP.Simple
 import Network.HTTP.Types (Status(..))
-import Network.HTTP.Types.Header (ResponseHeaders)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -187,17 +187,19 @@ responseErrorMsg res =
       Just (JsonErrorResponse t) -> t
       Nothing -> T.decodeUtf8 $ LBS.toStrict $ responseBody res
 
-checkStatusWithExpectedErrorCodes ::
+checkResponseWithExpectedErrorCodes ::
        [Int]
-    -> Status
-    -> ResponseHeaders
-    -> CookieJar
-    -> Maybe SomeException
-checkStatusWithExpectedErrorCodes expectedErrorCodes status@(Status sci _) resHeaders cookieJar =
-    if (200 <= sci && sci < 300) || sci `elem` expectedErrorCodes
-      then Nothing
-      else Just $ toException $
-           StatusCodeException status resHeaders cookieJar
+    -> Request
+    -> Response BodyReader
+    -> IO ()
+checkResponseWithExpectedErrorCodes expectedErrorCodes _req res =
+    let Status sci _ = responseStatus res
+    in if 200 <= sci && sci < 300 || sci `elem` expectedErrorCodes
+          then return ()
+          else do
+              chunk <- brReadSome (responseBody res) 1024
+              let res' = fmap (const ()) res
+              throwHttp $ StatusCodeException res' (LBS.toStrict chunk)
 
 -- | Writes to a specified database (which overrides the one provided in the config) some influx data.
 write ::
@@ -221,7 +223,7 @@ write config params database ds =
                setQueryString queryString $
                maybe id setRequestManager (config_manager config) $
                setRequestBody reqBody baseReq)
-               { checkStatus = checkStatusWithExpectedErrorCodes [400, 404, 500] }
+               { checkResponse = checkResponseWithExpectedErrorCodes [400, 404, 500] }
        (httpLBS req >>= handleResponse) `catch` \e ->
            pure $ WriteFailed $ WriteFailureHttpException e
     where
