@@ -22,7 +22,7 @@ import Control.Monad (void)
 import Data.Either (lefts, rights)
 import Network.HTTP.Client.Conduit
 import Network.HTTP.Client.Internal (BodyReader, throwHttp)
-import Network.HTTP.Simple
+import Network.HTTP.Simple hiding (Query)
 import Network.HTTP.Types (Status(..))
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
