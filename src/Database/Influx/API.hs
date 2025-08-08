@@ -25,6 +25,7 @@ import Network.HTTP.Client.Internal (BodyReader, throwHttp)
 import Network.HTTP.Simple hiding (Query)
 import Network.HTTP.Types (Status(..))
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Parser as AP
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Conduit.Attoparsec as C
@@ -101,7 +102,7 @@ queryRaw method config params query =
       responseSink res =
           case statusCode (responseStatus res) of
             sci | sci <= 200 && sci < 300 ->
-                do parsingRes <- C.sinkParserEither A.json'
+                do parsingRes <- C.sinkParserEither AP.json'
                    case parsingRes of
                      Left err -> pure $ QueryFailed $ QueryResponseJsonParseError $ show err
                      Right val ->
